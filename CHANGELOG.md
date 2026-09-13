@@ -9,6 +9,35 @@ atkarībā no izmaiņas apjoma. `package.json` atspoguļo to semver formātā
 
 ---
 
+## [0.05] — 2026-09-13
+
+Darbināšana uz NAS / Running it on a NAS.
+
+### Pievienots / Added
+
+- **`Dockerfile`** — divpakāpju build. Būvēšanas rīki (TypeScript, Vite) paliek
+  pirmajā pakāpē un nenonāk gatavajā attēlā. Datubāze atrodas `/data` sējumā,
+  nekad attēlā, tāpēc lietotnes atjaunināšana nekad neaiztiek ģimenes punktus.
+- **`docker-compose.yml`** — gatavs gan TrueNAS SCALE *Custom App* ekrānam, gan
+  parastam `docker compose up -d`. Ar `healthcheck` un `no-new-privileges`.
+- **`docker-entrypoint.sh`** — sakārto `/data` īpašnieku un nomet privilēģijas
+  uz nepriviliģētu lietotāju. Ja konteiners jau palaists kā `user: "568:568"`
+  (TrueNAS `apps` konts), tas vienkārši nodod vadību tālāk.
+- **README sadaļas** par TrueNAS SCALE 24.10+ (datu kopas sagatavošana, attēla
+  pārnešana bez reģistra, *Install via YAML*, ZFS momentuzņēmumi, problēmu
+  meklēšanas tabula) un par parastu Docker.
+
+### Piezīme par pārbaudi / Testing note
+
+Uz izstrādes datora nav Docker, tāpēc **attēls nav uzbūvēts un palaists**.
+Pārbaudīts tika viss, ko bez Docker var pārbaudīt:
+
+- serveris startē un apkalpo lietotni, kad uzstādītas **tikai** ražošanas
+  atkarības (`npm ci --omit=dev`) — tieši tā, kā to dara `Dockerfile`;
+- `server/test/smoke.sh` — 30/30 pret šo ražošanas uzstādījumu;
+- `healthcheck` komanda atgriež `0`, kad serveris strādā, un `1`, kad ne;
+- `docker-entrypoint.sh` sintakse (`sh -n`).
+
 ## [0.04] — 2026-09-13
 
 ### Labots / Fixed

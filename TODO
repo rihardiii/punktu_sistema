@@ -24,4 +24,4 @@ git repo: https://github.com/rihardiii/punktu_sistema.git
 [x] kids friendly design
 [x] friendly to parents as well
 [x] adding a new family member: when typing in the name / username / pin it automatically deselects the text box after one keypress on windoes brave browser (havent tested on others)
-[ ] need a way to run the "server" on truenas. docker? just a script?
+[x] need a way to run the "server" on truenas. docker? just a script?

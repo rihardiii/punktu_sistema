@@ -1,0 +1,14 @@
+# Normalise to LF in the repository.
+* text=auto
+
+# These are executed by Linux — inside the Docker image and on a NAS. With
+# CRLF endings the kernel reads the shebang as "/bin/sh\r" and the container
+# dies with "bad interpreter". Windows checkouts must keep LF for these.
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+
+# Binary assets git must not touch.
+*.png    binary
+*.sqlite binary

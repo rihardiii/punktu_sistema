@@ -1,0 +1,57 @@
+# Punktu sistēma — docker compose
+#
+# TrueNAS SCALE 24.10+: Apps → Discover Apps → Custom App → "Install via YAML"
+# and paste the `services:` block below. On any other machine: `docker compose up -d`.
+#
+# The only line you normally need to change is the host path in `volumes:`.
+
+services:
+  punkti:
+    container_name: punkti
+    # On TrueNAS, `build:` is not available — publish the image or build it
+    # elsewhere and reference it here instead.
+    build: .
+    image: punktu-sistema:0.05
+    restart: unless-stopped
+
+    ports:
+      # host:container — change the host side if 4173 is already taken.
+      - "4173:4173"
+
+    volumes:
+      # The family's entire history is one SQLite file in here. Point this at a
+      # dataset you actually snapshot and replicate.
+      - /mnt/tank/apps/punkti:/data
+
+    environment:
+      # Where the database file lives inside the container. Leave as-is; change
+      # the host path above instead.
+      PUNKTI_DB: /data/punkti.sqlite
+      # Listen on every interface so phones on the LAN can reach it.
+      HOST: 0.0.0.0
+      PORT: "4173"
+      # Affects container log timestamps only. The app stores every time in UTC
+      # and each device renders it in its own local timezone, so "Šodien 21:30"
+      # is already correct on a phone regardless of what this is set to.
+      TZ: Europe/Riga
+
+    # TrueNAS runs app containers as the `apps` account (uid/gid 568). If you
+    # uncomment this, the dataset above must be owned by 568:568 — the
+    # entrypoint cannot chown it when it is not root.
+    # user: "568:568"
+
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:4173/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+    # This app has no business talking to the internet, and a compromised
+    # dependency should not be able to either.
+    security_opt:
+      - no-new-privileges:true

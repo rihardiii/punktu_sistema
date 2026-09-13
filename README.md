@@ -18,6 +18,8 @@ cloud account. Latvian interface with English built in.*
 - [Ātrais sākums](#ātrais-sākums--quick-start)
 - [Kā to lieto ģimene](#kā-to-lieto-ģimene--how-a-family-uses-it)
 - [Piekļuve no telefona](#piekļuve-no-telefona--access-from-a-phone)
+- [TrueNAS SCALE](#truenas-scale)
+- [Docker (jebkur)](#docker-jebkur)
 - [Rezerves kopijas](#rezerves-kopijas--backups)
 - [Drošība](#drošība--security)
 - [Izstrādei](#izstrādei--development)
@@ -39,7 +41,7 @@ npm start
 Serveris parādīs adreses, kuras atvērt pārlūkā:
 
 ```
-  Punktu sistēma v0.03
+  Punktu sistēma v0.05
   Datubāze / database: C:\...\punktu_sistema\data\punkti.sqlite
   Lokāli / local:      http://localhost:4173
   Tīklā / on the LAN:  http://192.168.1.132:4173
@@ -109,8 +111,135 @@ Pēc tam tā atveras pilnekrānā, bez pārlūka joslām, ar savu ikonu.
 
 ### Kur to turēt ieslēgtu
 
-Jebkurš dators mājās der. Ja gribi, lai darbojas visu laiku, Raspberry Pi ir
-lēts un kluss variants:
+Jebkurš dators mājās der. Ja mājās ir NAS, tas ir labākais variants — tas jau
+darbojas visu diennakti un tam ir rezerves kopijas.
+
+---
+
+## TrueNAS SCALE
+
+TrueNAS SCALE 24.10+ (*Electric Eel* un jaunāks) darbina lietotnes ar Docker,
+tāpēc pietiek ar repozitorijā esošo `Dockerfile` un `docker-compose.yml`.
+
+### 1. Sagatavo datu kopu / dataset
+
+**Datasets → Add Dataset**, piemēram `tank/apps/punkti`. Šeit glabāsies
+`punkti.sqlite` — viss, kas jāieliek momentuzņēmumos un rezerves kopijās.
+
+Iestati īpašnieku uz TrueNAS lietotņu kontu (**Edit Permissions**):
+
+| Lauks | Vērtība |
+| ----- | ------- |
+| User  | `apps` (UID `568`) |
+| Group | `apps` (GID `568`) |
+| Access | `Read/Write` lietotājam un grupai |
+
+### 2. Uzbūvē attēlu / build the image
+
+TrueNAS *Custom App* ekrāns neprot `build:` — attēls jāuzbūvē iepriekš. Uz
+jebkura datora ar Docker:
+
+```bash
+git clone https://github.com/rihardiii/punktu_sistema.git
+cd punktu_sistema
+
+# Ja TrueNAS ir uz parasta x86 datora:
+docker build -t punktu-sistema:0.05 .
+
+# Ja TrueNAS ir uz ARM (piem., dažas mājas ierīces):
+docker buildx build --platform linux/arm64 -t punktu-sistema:0.05 .
+```
+
+Pārnes attēlu uz NAS bez reģistra:
+
+```bash
+docker save punktu-sistema:0.05 | gzip > punkti.tar.gz
+scp punkti.tar.gz truenas.local:/mnt/tank/apps/
+ssh truenas.local "gunzip -c /mnt/tank/apps/punkti.tar.gz | docker load"
+```
+
+> Ja tev ir savs reģistrs vai GitHub Container Registry, vienkārši
+> `docker push`, un `image:` norādi uz to.
+
+### 3. Pievieno lietotni / add the app
+
+**Apps → Discover Apps → Custom App → Install via YAML** un ielīmē:
+
+```yaml
+services:
+  punkti:
+    container_name: punkti
+    image: punktu-sistema:0.05
+    restart: unless-stopped
+    user: "568:568"
+    ports:
+      - "4173:4173"
+    volumes:
+      - /mnt/tank/apps/punkti:/data
+    environment:
+      PUNKTI_DB: /data/punkti.sqlite
+      HOST: 0.0.0.0
+      PORT: "4173"
+    security_opt:
+      - no-new-privileges:true
+```
+
+Nomaini `/mnt/tank/apps/punkti` uz savu datu kopas ceļu.
+
+Pēc **Install** atver `http://<nas-ip>:4173` un izveido pirmo vecāka kontu.
+
+### Rezerves kopijas uz TrueNAS
+
+Šis ir labākais iemesls to darbināt uz NAS: **Data Protection → Periodic
+Snapshot Tasks** uz `tank/apps/punkti`. Ja bērns kaut ko izdzēš vai kaut kas
+saiet greizi, atgriezties var ar momentuzņēmumu.
+
+Lai kopija būtu garantēti konsistenta, momentuzņēmumu var ņemt pēc SQLite
+`.backup`, bet ar ieslēgtu WAL režīmu parasts momentuzņēmums praksē der.
+
+### Problēmu meklēšana
+
+| Simptoms | Iemesls |
+| -------- | ------- |
+| `SQLITE_CANTOPEN` vai lietotne uzreiz apstājas | Datu kopa nepieder `568:568`. Pārbaudi **Edit Permissions**. |
+| Lapa atveras, bet telefonā ne | Pārbaudi, vai ports ir publicēts un TrueNAS ugunsmūris to atļauj. |
+| Punkti "pazuda" pēc atjaunināšanas | Pārbaudi, vai `volumes:` ceļš nav mainījies — datubāze ir tur, nevis attēlā. |
+
+Žurnālus skaties **Apps → punkti → Logs**, vai:
+
+```bash
+docker logs -f punkti
+```
+
+---
+
+## Docker (jebkur)
+
+Uz jebkura datora ar Docker pietiek ar:
+
+```bash
+git clone https://github.com/rihardiii/punktu_sistema.git
+cd punktu_sistema
+# nomaini ceļu sadaļā `volumes:` uz savu mapi
+docker compose up -d
+```
+
+Lietotne būs pieejama uz `http://<datora-ip>:4173`.
+
+```bash
+docker compose logs -f     # žurnāli
+docker compose down        # apturēt
+docker compose up -d --build   # atjaunināt pēc git pull
+```
+
+Datubāze ir pievienotajā mapē, nevis attēlā, tāpēc konteinera pārbūve nekad
+neaiztiek ģimenes punktus.
+
+---
+
+### Uz Raspberry Pi vai cita Linux datora
+
+Ja NAS nav, Raspberry Pi ir lēts un kluss variants:
 
 ```bash
 # Raspberry Pi / Linux — palaist automātiski
@@ -195,19 +324,33 @@ web/             React 19 + Vite, PWA
   src/i18n.tsx     Latviešu un angļu valoda
   src/theme.tsx    Gaišā / tumšā / pielāgota tēma
   src/styles/      Dizaina mainīgie un komponentes
+  test/ui.mjs      Pārlūka testi (Playwright, nav obligāta atkarība)
+Dockerfile         Divpakāpju build; datubāze /data sējumā
+docker-compose.yml TrueNAS SCALE un parastam Docker
 ```
 
 ### Testi
+
+API testi (30 pārbaudes, nav vajadzīgas papildu atkarības):
 
 ```bash
 PUNKTI_DB=/tmp/test.sqlite PORT=4199 npm run dev:server &
 BASE=http://localhost:4199 bash server/test/smoke.sh
 ```
 
+Pārlūka testi (vajadzīgs Playwright; jāpalaiž pret tukšu datubāzi):
+
+```bash
+npm install --no-save playwright && npx playwright install chromium
+npm run build
+PUNKTI_DB=/tmp/uitest.sqlite PORT=4230 node server/dist/index.js &
+BASE=http://localhost:4230 node web/test/ui.mjs
+```
+
 ### Versijas
 
 Versiju shēma ir `0.01`, `0.02`, … kā aprakstīts [`CHANGELOG.md`](CHANGELOG.md).
-`package.json` to atspoguļo semver formātā (`0.02` → `0.2.0`).
+`package.json` to atspoguļo semver formātā (`0.04` → `0.4.0`).
 
 ---
 
