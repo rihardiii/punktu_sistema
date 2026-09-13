@@ -9,6 +9,24 @@ atkarībā no izmaiņas apjoma. `package.json` atspoguļo to semver formātā
 
 ---
 
+## [0.03] — 2026-09-13
+
+### Labots / Fixed
+
+- **Datubāzes atrašanās vieta vairs nav atkarīga no palaišanas mapes.** Agrāk
+  `data/punkti.sqlite` tika meklēts attiecībā pret procesa darba mapi, tāpēc
+  `npm start` no projekta saknes to izveidoja `server/data/`, nevis `data/`, kā
+  aprakstīts README. Sliktākajā gadījumā pakalpojums (piem., `systemd`), kas
+  palaists no citas mapes, būtu izveidojis otru, tukšu datubāzi, un visi punkti
+  būtu "pazuduši". Tagad ceļš tiek noteikts attiecībā pret projekta sakni.
+  `PUNKTI_DB` joprojām pārraksta to pilnībā.
+
+> **Ja jau esi palaidis 0.02:** pārbaudi, vai `server/data/punkti.sqlite`
+> eksistē, un pārvieto to uz `data/punkti.sqlite` (kopā ar `-wal` un `-shm`
+> failiem, ja tādi ir).
+
+---
+
 ## [0.02] — 2026-09-13
 
 Lietotāja saskarne / The web app.

@@ -1,9 +1,18 @@
 import Database from 'better-sqlite3';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { MIGRATIONS } from './schema.ts';
 
-const DB_PATH = resolve(process.env.PUNKTI_DB ?? 'data/punkti.sqlite');
+// Both server/src/db.ts (dev) and server/dist/db.js (built) sit two levels
+// below the repo root, so the family's data always lands in <repo>/data —
+// never wherever the process happened to be started from. A service manager
+// launching this from / must not create a second, empty database.
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+
+const DB_PATH = process.env.PUNKTI_DB
+  ? resolve(process.env.PUNKTI_DB)
+  : resolve(repoRoot, 'data', 'punkti.sqlite');
 
 mkdirSync(dirname(DB_PATH), { recursive: true });
 

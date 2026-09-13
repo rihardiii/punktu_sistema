@@ -39,7 +39,7 @@ npm start
 Serveris parādīs adreses, kuras atvērt pārlūkā:
 
 ```
-  Punktu sistēma v0.02
+  Punktu sistēma v0.03
   Datubāze / database: C:\...\punktu_sistema\data\punkti.sqlite
   Lokāli / local:      http://localhost:4173
   Tīklā / on the LAN:  http://192.168.1.132:4173
@@ -54,7 +54,7 @@ ir aizpildīta ar 12 labajiem darbiem un 8 balvām latviski, ko vari brīvi labo
 | ----------- | -------------------- | -------------------------------------- |
 | `PORT`      | `4173`               | Servera ports                          |
 | `HOST`      | `0.0.0.0`            | `127.0.0.1`, lai atļautu tikai lokāli  |
-| `PUNKTI_DB` | `data/punkti.sqlite` | Datubāzes faila atrašanās vieta        |
+| `PUNKTI_DB` | `<projekts>/data/punkti.sqlite` | Datubāzes faila atrašanās vieta |
 
 ```bash
 PORT=8080 PUNKTI_DB=/mnt/usb/punkti.sqlite npm start
