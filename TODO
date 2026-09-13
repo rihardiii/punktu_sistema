@@ -8,18 +8,18 @@ App tracks kids points that are gathered doing overall good deeds:
 
 git repo: https://github.com/rihardiii/punktu_sistema.git
 
-[ ] starting version 0.01
-[ ] version increment by .01 or more depending on how big of a change or addition
-[ ] Each good deed has some weight to it and good deeds can be added in the future by the parents.
-[ ] Each good deed should have some icon representing it (can be generated or added by the user or left blank)
-[ ] multiple users: Mom, Dad and a Kid.
-[ ] Mom and Dad are parent / admin users
-[ ] kid is normal users
-[ ] parents can have multiple kids
-[ ] app can be used in android and windows and linux (optional)
-[ ] kid can add newly done job and parents can after inspection accept it and the points can be added to the kids account
-[ ] points can be exchanged to other stuff by the kid, for example: console playtime, money and so on
-[ ] parents accept or deny the request.
-[ ] dark / light / custom
-[ ] kids friendly design
-[ ] friendly to parents as well
+[x] starting version 0.01
+[x] version increment by .01 or more depending on how big of a change or addition
+[x] Each good deed has some weight to it and good deeds can be added in the future by the parents.
+[x] Each good deed should have some icon representing it (can be generated or added by the user or left blank)
+[x] multiple users: Mom, Dad and a Kid.
+[x] Mom and Dad are parent / admin users
+[x] kid is normal users
+[x] parents can have multiple kids
+[x] app can be used in android and windows and linux (optional)
+[x] kid can add newly done job and parents can after inspection accept it and the points can be added to the kids account
+[x] points can be exchanged to other stuff by the kid, for example: console playtime, money and so on
+[x] parents accept or deny the request.
+[x] dark / light / custom
+[x] kids friendly design
+[x] friendly to parents as well

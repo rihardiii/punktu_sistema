@@ -1,0 +1,97 @@
+/*
+ * Design tokens. Every colour the UI uses is a variable here, which is what
+ * makes the light / dark / custom theme switch a one-line change at runtime.
+ *
+ * `--accent` is the only hue a family actually picks; everything else is
+ * derived from it or comes from the neutral ramp, so a custom accent can never
+ * produce an unreadable screen.
+ */
+
+:root {
+  /* Accent — overridden per-user by the custom theme picker. */
+  --accent: #6c8ef5;
+  --accent-strong: #4f74e8;
+  --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+  --accent-ink: #ffffff;
+
+  /* Semantic colours, shared by both themes. */
+  --good: #2fae7d;
+  --good-soft: color-mix(in srgb, var(--good) 14%, transparent);
+  --warn: #e9a23b;
+  --warn-soft: color-mix(in srgb, var(--warn) 16%, transparent);
+  --bad: #e8615c;
+  --bad-soft: color-mix(in srgb, var(--bad) 14%, transparent);
+  --gold: #f2c14e;
+
+  /* Spacing — a 4px rhythm. */
+  --s1: 0.25rem;
+  --s2: 0.5rem;
+  --s3: 0.75rem;
+  --s4: 1rem;
+  --s5: 1.5rem;
+  --s6: 2rem;
+  --s7: 3rem;
+
+  /* Rounded, friendly geometry: this app is used by children. */
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 22px;
+  --r-xl: 30px;
+  --r-full: 999px;
+
+  --font: 'Nunito', 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+  --shadow-sm: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 8%);
+  --shadow-md: 0 4px 10px rgb(16 24 40 / 8%), 0 12px 24px rgb(16 24 40 / 8%);
+  --shadow-lg: 0 12px 24px rgb(16 24 40 / 10%), 0 28px 56px rgb(16 24 40 / 12%);
+
+  --ease: cubic-bezier(0.22, 0.9, 0.35, 1);
+  --tap: 48px; /* minimum touch target — small fingers */
+}
+
+/* --- Gaišais / light ----------------------------------------------------- */
+[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f4f6fb;
+  --bg-tint: radial-gradient(1200px 600px at 15% -10%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%);
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --surface-3: #eef2f8;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --text: #16202e;
+  --text-2: #4a5768;
+  --text-3: #7b8798;
+  --shadow-sm: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 8%);
+  --shadow-md: 0 4px 10px rgb(16 24 40 / 8%), 0 12px 24px rgb(16 24 40 / 8%);
+  --shadow-lg: 0 12px 24px rgb(16 24 40 / 10%), 0 28px 56px rgb(16 24 40 / 12%);
+}
+
+/* --- Tumšais / dark ------------------------------------------------------ */
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f1420;
+  --bg-tint: radial-gradient(1200px 600px at 15% -10%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%);
+  --surface: #1a2233;
+  --surface-2: #212b3e;
+  --surface-3: #2a3549;
+  --border: #2c3852;
+  --border-strong: #3b4a68;
+  --text: #eef2fa;
+  --text-2: #b3bed2;
+  --text-3: #8494ad;
+  --accent-ink: #0f1420;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 30%);
+  --shadow-md: 0 6px 16px rgb(0 0 0 / 36%);
+  --shadow-lg: 0 16px 40px rgb(0 0 0 / 46%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

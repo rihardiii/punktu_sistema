@@ -1,6 +1,6 @@
 {
   "name": "punktu-sistema",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Ģimenes punktu sistēma — self-hosted points tracker for kids' good deeds",
   "private": true,
   "type": "module",
@@ -21,6 +21,7 @@
   },
   "license": "MIT",
   "allowScripts": {
-    "better-sqlite3@12.11.1": true
+    "better-sqlite3@12.11.1": true,
+    "esbuild@0.28.2": true
   }
 }
