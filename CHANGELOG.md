@@ -9,6 +9,36 @@ atkarībā no izmaiņas apjoma. `package.json` atspoguļo to semver formātā
 
 ---
 
+## [0.04] — 2026-09-13
+
+### Labots / Fixed
+
+- **Teksta lauki dialoglodziņos zaudēja fokusu pēc katra nospiestā taustiņa.**
+  Pievienojot ģimenes locekli, vārdā, lietotājvārdā un PIN laukā varēja ievadīt
+  tikai vienu rakstzīmi — tālāk fokuss pārlēca uz dialoglodziņu. Tas skāra visus
+  dialoglodziņus: darbu un balvu labošanu, punktu korekcijas un noraidīšanas
+  piezīmi.
+
+  Cēlonis: `Modal` komponentes efekts bija atkarīgs no `onClose`, ko katrs
+  izsaucējs padod kā jaunu funkciju katrā renderēšanas reizē. Tāpēc efekts
+  izpildījās no jauna pēc katra taustiņa nospiešanas un tajā esošais
+  `focus()` izrāva fokusu no ievades lauka. Tagad atsauce tiek glabāta `ref`,
+  un efekts izpildās tikai vienreiz.
+
+- **`autoFocus` dialoglodziņos beidzot darbojas.** Tas pats `focus()` izsaukums
+  klusi atcēla to uzreiz pēc atvēršanas. Tagad fokuss tiek pārvietots uz
+  dialoglodziņu tikai tad, ja tajā jau kaut kas nav fokusēts.
+
+### Pievienots / Added
+
+- **`web/test/ui.mjs`** — pārlūka regresijas testi. Tie raksta tekstu pa vienam
+  taustiņam (`pressSequentially`), nevis ar `fill()`; tieši tāpēc iepriekšējie
+  testi šo kļūdu nepamanīja — `fill()` ieraksta vērtību vienā solī un nekad
+  nepakļauj sevi fokusa zaudēšanai starp taustiņiem.
+  Playwright apzināti nav projekta atkarība; skat. faila komentāru.
+
+---
+
 ## [0.03] — 2026-09-13
 
 ### Labots / Fixed

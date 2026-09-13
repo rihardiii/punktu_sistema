@@ -139,20 +139,36 @@ export function Modal({
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
+  /*
+   * Every caller passes an inline arrow for onClose, so its identity changes on
+   * each render. Depending on it here re-ran this whole effect on every
+   * keystroke, and the focus() call inside then yanked focus out of whatever
+   * input was being typed in — you could only ever enter one character. Holding
+   * the callback in a ref lets the effect run exactly once, on mount.
+   */
+  const closeRef = useRef(onClose);
+  useEffect(() => {
+    closeRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') closeRef.current();
     };
     document.addEventListener('keydown', onKey);
-    // Focus the panel so screen readers and keyboards land inside the dialog.
-    ref.current?.focus();
+
+    // Move focus into the dialog for screen readers and keyboards — but leave
+    // it alone if an autoFocus'd control inside already claimed it.
+    const panel = ref.current;
+    if (panel && !panel.contains(document.activeElement)) panel.focus();
+
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = previousOverflow;
     };
-  }, [onClose]);
+  }, []);
 
   return (
     <div
