@@ -1,0 +1,25 @@
+An app in Latvian (in the future English as well) probably a web app, that can be hosted by each user so there is no public server. Peer to peer can be an option, probably a good one.
+App tracks kids points that are gathered doing overall good deeds:
+* cleaning the house
+* dishes / clothes
+* looking after siblings
+* being overy polite
+* etc
+
+git repo: https://github.com/rihardiii/punktu_sistema.git
+
+[ ] starting version 0.01
+[ ] version increment by .01 or more depending on how big of a change or addition
+[ ] Each good deed has some weight to it and good deeds can be added in the future by the parents.
+[ ] Each good deed should have some icon representing it (can be generated or added by the user or left blank)
+[ ] multiple users: Mom, Dad and a Kid.
+[ ] Mom and Dad are parent / admin users
+[ ] kid is normal users
+[ ] parents can have multiple kids
+[ ] app can be used in android and windows and linux (optional)
+[ ] kid can add newly done job and parents can after inspection accept it and the points can be added to the kids account
+[ ] points can be exchanged to other stuff by the kid, for example: console playtime, money and so on
+[ ] parents accept or deny the request.
+[ ] dark / light / custom
+[ ] kids friendly design
+[ ] friendly to parents as well
