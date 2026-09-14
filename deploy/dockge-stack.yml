@@ -1,0 +1,76 @@
+# Punktu sistēma — Dockge / docker compose stack for TrueNAS SCALE
+#
+# Paste this into Dockge as a new stack named "punkti".
+# Before starting it, create the data directory on the NAS:
+#
+#     mkdir -p /mnt/apps/punkti/data
+#
+# The container starts as root, chowns /data and then drops to an
+# unprivileged user, so the directory's owner on the host does not matter.
+
+services:
+  punkti:
+    image: ghcr.io/rihardiii/punktu_sistema:latest
+    container_name: punkti
+    restart: unless-stopped
+
+    ports:
+      # Pick any free host port; 4173 does not clash with AdGuard Home.
+      - 4173:4173
+
+    volumes:
+      # The family's entire history is one SQLite file in here.
+      # Snapshot this dataset — it is the only thing that cannot be rebuilt.
+      - /mnt/apps/punkti/data:/data
+
+    environment:
+      PUNKTI_DB: /data/punkti.sqlite
+      HOST: 0.0.0.0
+      PORT: "4173"
+      # Container log timestamps only — the UI always renders times in each
+      # device's own timezone.
+      TZ: Europe/Riga
+
+    # Watchtower only touches containers carrying this label, so it will never
+    # restart AdGuard Home or anything else on this box.
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+
+    security_opt:
+      - no-new-privileges:true
+
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:4173/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  # Polls GHCR and redeploys punkti when a new image is published.
+  # Delete this service if you would rather press "Update" in Dockge yourself.
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Only needed while the GHCR package is private — this is the credential
+      # file created by `docker login ghcr.io` on the NAS. Delete this line if
+      # you make the package public.
+      - /root/.docker/config.json:/config.json:ro
+
+    environment:
+      # LABEL_ENABLE limits Watchtower to the container labelled above.
+      WATCHTOWER_LABEL_ENABLE: "true"
+      # Check every 5 minutes.
+      WATCHTOWER_POLL_INTERVAL: "300"
+      # Delete the superseded image so the NAS does not fill up with old layers.
+      WATCHTOWER_CLEANUP: "true"
+      TZ: Europe/Riga
+
+networks: {}

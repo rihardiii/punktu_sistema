@@ -9,6 +9,52 @@ atkarībā no izmaiņas apjoma. `package.json` atspoguļo to semver formātā
 
 ---
 
+## [0.06] — 2026-09-14
+
+Automātiska piegāde uz NAS / Continuous delivery to the NAS.
+
+### Pievienots / Added
+
+- **`.github/workflows/ci.yml`** — pēc katra `git push` uz `main` tiek palaisti
+  testi un, ja tie iziet, uzbūvēts un publicēts attēls uz
+  `ghcr.io/rihardiii/punktu_sistema`.
+
+  Publicēšana ir atkarīga no testiem (`needs: test`): ja `typecheck`, `build`
+  vai `smoke.sh` krīt, jauns attēls **netiek** publicēts un NAS turpina
+  darbināt iepriekšējo strādājošo versiju. Tas ir būtiski, jo atjaunināšana ir
+  automātiska — bez šī sliktu commit varētu automātiski aizpildīt ģimenes NAS.
+
+  Attēls tiek marķēts ar `latest`, versijas numuru (`0.6.0`) un commit SHA,
+  tāpēc atgriezties uz iepriekšējo versiju var, nomainot tagu.
+
+- **`deploy/dockge-stack.yml`** — gatavs steks Dockge ar Watchtower, kas
+  atjaunina **tikai** `punkti` konteineru (`WATCHTOWER_LABEL_ENABLE`), tāpēc
+  pārējie konteineri uz tā paša NAS netiek aiztikti.
+
+- **README sadaļa par TrueNAS** pārrakstīta: GHCR + Watchtower plūsma,
+  privāta attēla autorizācija ar `read:packages` žetonu, datu mapes izveide,
+  atgriešanās uz iepriekšējo versiju un problēmu meklēšanas tabula.
+
+### Labots / Fixed
+
+- **README rezerves kopijas komanda nestrādāja.** `better-sqlite3` metode
+  `.backup()` atgriež `Promise`, bet komandā tas netika gaidīts, tāpēc process
+  beidzās, pirms fails bija uzrakstīts — rezerves kopija klusi nesanāca.
+  Pārbaudīts: izlabotā komanda izveido kopiju, kuras `pragma integrity_check`
+  ir `ok` un kurā ir visas septiņas tabulas.
+
+### Piezīme par pārbaudi / Testing note
+
+Uz izstrādes datora nav ne Docker, ne GitHub Actions izpildvides, tāpēc
+**attēla būve un darbplūsma nav izpildīta**. Pārbaudīts tika:
+
+- visi YAML faili (`ci.yml`, `dockge-stack.yml`, `docker-compose.yml` un
+  README ielīmējamais bloks) korekti parsējas;
+- visas izmantotās GitHub darbības eksistē norādītajās versijās;
+- rezerves kopijas komanda (palaista lokāli, pārbaudīta integritāte);
+- `npm run typecheck`, `npm run build`, `smoke.sh` 30/30 un `web/test/ui.mjs`
+  — tie paši soļi, ko izpilda `test` darbs.
+
 ## [0.05] — 2026-09-13
 
 Darbināšana uz NAS / Running it on a NAS.

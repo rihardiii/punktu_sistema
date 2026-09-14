@@ -11,7 +11,7 @@ services:
     # On TrueNAS, `build:` is not available — publish the image or build it
     # elsewhere and reference it here instead.
     build: .
-    image: punktu-sistema:0.05
+    image: punktu-sistema:0.06
     restart: unless-stopped
 
     ports:
