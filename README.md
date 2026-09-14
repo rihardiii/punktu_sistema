@@ -20,7 +20,7 @@ cloud account. Latvian interface with English built in.*
 - [Piekļuve no telefona](#piekļuve-no-telefona--access-from-a-phone)
 - [TrueNAS SCALE](#truenas-scale)
 - [Docker (jebkur)](#docker-jebkur)
-- [Automātiskā atjaunināšana](#kā-izskatās-atjaunināšana)
+- [Atjaunināšana](#atjaunināšana)
 - [Rezerves kopijas](#rezerves-kopijas--backups)
 - [Drošība](#drošība--security)
 - [Izstrādei](#izstrādei--development)
@@ -42,7 +42,7 @@ npm start
 Serveris parādīs adreses, kuras atvērt pārlūkā:
 
 ```
-  Punktu sistēma v0.06
+  Punktu sistēma v0.07
   Datubāze / database: C:\...\punktu_sistema\data\punkti.sqlite
   Lokāli / local:      http://localhost:4173
   Tīklā / on the LAN:  http://192.168.1.132:4173
@@ -119,47 +119,44 @@ darbojas visu diennakti un tam ir rezerves kopijas.
 
 ## TrueNAS SCALE
 
-TrueNAS SCALE 24.10+ darbina lietotnes ar Docker. Ieteicamais veids ir
-publicēts attēls no GitHub + **Watchtower**, kas to automātiski atjaunina —
-tad pietiek ar `git push`, un pēc dažām minūtēm NAS jau darbina jauno versiju.
+TrueNAS SCALE 24.10+ darbina lietotnes ar Docker. GitHub uzbūvē un publicē
+attēlu pēc katra `git push`, un tu pats izlem, kad NAS to paņem.
 
 ```
-  git push  →  GitHub Actions (testi + build)  →  ghcr.io  →  Watchtower  →  NAS
+  git push  →  GitHub Actions (testi + build)  →  ghcr.io  →  [tu spied Update]  →  NAS
 ```
 
-Ja testi krīt, attēls netiek publicēts un ģimene turpina lietot iepriekšējo
-strādājošo versiju.
+Ja testi krīt, attēls netiek publicēts, tāpēc "Update" nekad nevar uzlikt
+versiju, kas nav izturējusi testus.
 
-### 1. Ieslēdz attēla publicēšanu
+### 1. Pārbaudi, vai attēls ir uzbūvēts
 
-`.github/workflows/ci.yml` jau ir repozitorijā. Pēc pirmā `git push` uz `main`
-tas uzbūvē un publicē `ghcr.io/rihardiii/punktu_sistema:latest`.
+`.github/workflows/ci.yml` jau ir repozitorijā. Pēc `git push` uz `main` tas
+palaiž testus un publicē `ghcr.io/rihardiii/punktu_sistema:latest`.
 
 Skaties **GitHub → Actions**. Pirmā reize aizņem pāris minūtes.
 
-### 2. Ļauj NAS lejupielādēt attēlu
+### 2. Pieraksti NAS pie GHCR
 
-Ja repozitorijs ir privāts, arī attēls ir privāts. Izvēlies vienu:
-
-**a) Paliec pie privāta** (ieteicams) — vienreiz pieraksties NAS terminālī:
+Repozitorijs un attēls ir privāti, tāpēc NAS vienreiz jāpierakstās:
 
 ```bash
 # GitHub → Settings → Developer settings → Personal access tokens
-# → Tokens (classic) → Generate, atzīmē tikai `read:packages`
+# → Tokens (classic) → Generate new token
+# → atzīmē TIKAI `read:packages`, derīgumu vari likt "No expiration"
 echo "<TOKEN>" | docker login ghcr.io -u rihardiii --password-stdin
 ```
 
-Tas izveido `/root/.docker/config.json`, ko Watchtower izmanto.
+Tas saglabā žetonu `/root/.docker/config.json`. Jāatkārto tikai tad, ja žetonam
+beidzas derīgums vai to atsauc.
 
-**b) Padari attēlu publisku** — GitHub → repozitorijs → **Packages** →
-`punktu_sistema` → *Package settings* → *Change visibility* → Public.
-Tad `docker login` nav vajadzīgs, un no `dockge-stack.yml` var izdzēst rindu ar
-`/root/.docker/config.json`. Pievērs uzmanību: tad attēls (un līdz ar to
-kompilētais kods) ir publiski pieejams, pat ja repozitorijs paliek privāts.
+Pārbaude:
+
+```bash
+docker pull ghcr.io/rihardiii/punktu_sistema:latest
+```
 
 ### 3. Izveido datu mapi
-
-NAS terminālī:
 
 ```bash
 mkdir -p /mnt/apps/punkti/data
@@ -174,8 +171,6 @@ privilēģijas, tāpēc mapes īpašnieks uz resursdatora nav svarīgs.
 Dockge → **Compose** → jauns steks ar nosaukumu `punkti`. Ielīmē saturu no
 [`deploy/dockge-stack.yml`](deploy/dockge-stack.yml) un nospied **Deploy**.
 
-Īsumā tas satur:
-
 ```yaml
 services:
   punkti:
@@ -188,59 +183,52 @@ services:
       - /mnt/apps/punkti/data:/data
     environment:
       PUNKTI_DB: /data/punkti.sqlite
+      HOST: 0.0.0.0
+      PORT: "4173"
       TZ: Europe/Riga
-    labels:
-      com.centurylinklabs.watchtower.enable: "true"
-
-  watchtower:
-    image: containrrr/watchtower
-    container_name: watchtower
-    restart: unless-stopped
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /root/.docker/config.json:/config.json:ro
-    environment:
-      WATCHTOWER_LABEL_ENABLE: "true"
-      WATCHTOWER_POLL_INTERVAL: "300"
-      WATCHTOWER_CLEANUP: "true"
+    security_opt:
+      - no-new-privileges:true
 
 networks: {}
 ```
 
-Watchtower ir ierobežots ar `WATCHTOWER_LABEL_ENABLE`, tāpēc tas atjaunina
-**tikai** `punkti` konteineru un nekad neaiztiek AdGuard Home vai citus
-konteinerus uz tā paša NAS.
-
 Atver `http://<nas-ip>:4173` un izveido pirmo vecāka kontu.
 
-### Kā izskatās atjaunināšana
+### Atjaunināšana
 
-1. Izdari izmaiņas un `git push`.
-2. GitHub Actions palaiž testus un publicē jaunu `:latest`.
-3. Watchtower to pamana (līdz 5 min), pārlādē konteineru — parasti dažas
-   sekundes dīkstāves.
-4. Telefonos PWA atjaunina sevi pati (`registerType: 'autoUpdate'`).
+Kad esi izdarījis izmaiņas un `git push` ir pagājis cauri testiem:
+
+**Dockge:** atver `punkti` steku → **Update**. Tas pavelk jauno attēlu un
+pārstartē konteineru — parasti dažas sekundes dīkstāves.
+
+**No termināļa:**
+
+```bash
+cd /opt/stacks/punkti
+docker compose pull
+docker compose up -d
+docker image prune -f     # notīra veco attēlu
+```
+
+Telefonos PWA atjaunina sevi pati (`registerType: 'autoUpdate'`) — pietiek
+aizvērt un atvērt lietotni.
 
 Datubāze ir pievienotajā mapē, nevis attēlā, tāpēc atjaunināšana nekad
 neaiztiek punktus.
 
-Ja negribi automātisku atjaunināšanu, izdzēs `watchtower` servisu un spied
-**Update** Dockge saskarnē, kad pats vēlies.
+### Atgriešanās uz iepriekšējo versiju
 
-> **Par Watchtower:** `containrrr/watchtower` pēdējo reizi tika publicēts
-> 2023. gada novembrī — projekts vairs netiek aktīvi uzturēts. Tas joprojām
-> strādā un ir visizplatītākais risinājums, bet tam ir piekļuve
-> `docker.sock`, tāpēc der zināt, ka tas ir "iesaldēts".
->
-> Divas alternatīvas, ja tas traucē:
->
-> - uzturēts atzars: `nickfedor/watchtower` tā vietā (tie paši iestatījumi);
-> - bez papildu dēmona vispār — cron uzdevums uz NAS:
->
->   ```bash
->   # katru stundu: pavelk jaunu attēlu un pārstartē, ja tas ir mainījies
->   0 * * * * cd /opt/stacks/punkti && docker compose pull -q && docker compose up -d
->   ```
+Katrs attēls ir marķēts arī ar versijas numuru un commit SHA, ne tikai
+`latest`. Ja jaunā versija kaut ko salauž, stekā nomaini tagu:
+
+```yaml
+    image: ghcr.io/rihardiii/punktu_sistema:0.6.0
+```
+
+un spied **Update**. Pieejamos tagus vari redzēt GitHub → **Packages**.
+
+Ja gribi vispār izvairīties no negaidītām izmaiņām, tur steku uz konkrēta
+versijas taga un maini to apzināti, nevis lieto `latest`.
 
 ### Rezerves kopijas
 
@@ -265,15 +253,15 @@ new D(process.env.PUNKTI_DB,{readonly:true}).backup(out)
 
 | Simptoms | Iemesls |
 | -------- | ------- |
-| `denied` / `unauthorized`, velkot attēlu | Attēls ir privāts un NAS nav pierakstījies. Skat. 2. soli. |
+| `denied` / `unauthorized`, velkot attēlu | NAS nav pierakstījies GHCR vai žetonam beidzies derīgums. Skat. 2. soli. |
+| `manifest unknown` | Attēls vēl nav publicēts — pārbaudi GitHub → Actions. |
 | `SQLITE_CANTOPEN` | `/mnt/apps/punkti/data` neeksistē. Skat. 3. soli. |
-| Lietotne nestartē pēc atjaunināšanas | `docker logs punkti`; atgriezies uz iepriekšējo tagu, nomainot `:latest` uz versijas numuru, piem. `:0.6.0`. |
-| Watchtower neko nedara | Pārbaudi, vai `punkti` ir `com.centurylinklabs.watchtower.enable` iezīme. |
+| Lietotne nestartē pēc atjaunināšanas | `docker logs punkti`; atgriezies uz iepriekšējo versijas tagu. |
 | Lapa atveras, bet telefonā ne | Pārbaudi portu un TrueNAS ugunsmūri. |
 
 ```bash
 docker logs -f punkti
-docker logs -f watchtower
+docker inspect --format '{{.State.Health.Status}}' punkti
 ```
 
 ### Ja gribi būvēt pats, bez GitHub
@@ -285,7 +273,7 @@ scp punkti.tar.gz truenas.local:/mnt/apps/
 ssh truenas.local "gunzip -c /mnt/apps/punkti.tar.gz | docker load"
 ```
 
-Tad stekā norādi `image: punktu-sistema:local` un izdzēs `watchtower`.
+Tad stekā norādi `image: punktu-sistema:local`.
 
 ---
 
@@ -403,7 +391,7 @@ web/             React 19 + Vite, PWA
   test/ui.mjs      Pārlūka testi (Playwright, nav obligāta atkarība)
 Dockerfile         Divpakāpju build; datubāze /data sējumā
 docker-compose.yml Parastam Docker (ar `build:`)
-deploy/            Gatavs Dockge steks TrueNAS ar Watchtower
+deploy/            Gatavs Dockge steks TrueNAS
 .github/workflows/ Testi un attēla publicēšana uz ghcr.io
 ```
 

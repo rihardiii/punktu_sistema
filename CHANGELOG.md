@@ -9,6 +9,26 @@ atkarībā no izmaiņas apjoma. `package.json` atspoguļo to semver formātā
 
 ---
 
+## [0.07] — 2026-09-14
+
+### Mainīts / Changed
+
+- **Atjaunināšana vairs nav automātiska.** Watchtower ir izņemts no
+  `deploy/dockge-stack.yml`. Attēls joprojām tiek uzbūvēts un publicēts pēc
+  katra `git push`, bet NAS to paņem tikai tad, kad pats nospied **Update**
+  Dockge saskarnē (vai `docker compose pull && docker compose up -d`).
+
+  Līdz ar to uz NAS vairs nedarbojas konteiners ar piekļuvi `docker.sock`.
+
+- **Attēls paliek privāts.** README vairs nepiedāvā padarīt GHCR pakotni
+  publisku; vienīgais ceļš ir vienreizējs `docker login ghcr.io` uz NAS ar
+  `read:packages` žetonu.
+
+- **README papildināts ar atgriešanos uz iepriekšējo versiju.** Katrs attēls ir
+  marķēts arī ar versijas numuru un commit SHA, tāpēc stekā pietiek nomainīt
+  tagu uz, piemēram, `:0.6.0`. Aprakstīts arī, kā turēt steku uz konkrēta taga
+  `latest` vietā, ja negribi negaidītas izmaiņas.
+
 ## [0.06] — 2026-09-14
 
 Automātiska piegāde uz NAS / Continuous delivery to the NAS.

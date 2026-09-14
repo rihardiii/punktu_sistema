@@ -1,11 +1,14 @@
 name: CI
 
-# Builds and publishes the container image on every push to main, so a NAS
-# running Watchtower picks up new versions automatically.
+# Builds and publishes the container image on every push to main. The NAS pulls
+# it when you choose to — Dockge → punkti → Update — rather than automatically.
 #
 # The publish job depends on the test job: if typecheck, build or the API test
-# suite fails, no image is pushed and the family keeps running the last good
-# version instead of auto-updating into a broken one.
+# suite fails, no image is published, so pressing Update can never deploy a
+# version that did not pass its tests.
+#
+# Images are tagged latest, the app version and the commit SHA, so pinning the
+# stack to an older tag is all a rollback takes.
 
 on:
   push:
