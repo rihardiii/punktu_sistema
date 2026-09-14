@@ -43,7 +43,7 @@ npm start
 Serveris parādīs adreses, kuras atvērt pārlūkā:
 
 ```
-  Punktu sistēma v0.08
+  Punktu sistēma v0.09
   Datubāze / database: C:\...\punktu_sistema\data\punkti.sqlite
   Lokāli / local:      http://localhost:4173
   Tīklā / on the LAN:  http://192.168.1.132:4173
@@ -139,23 +139,83 @@ Skaties **GitHub → Actions**. Pirmā reize aizņem pāris minūtes.
 
 ### 2. Pieraksti NAS pie GHCR
 
-Repozitorijs un attēls ir privāti, tāpēc NAS vienreiz jāpierakstās:
+Repozitorijs un attēls ir privāti, tāpēc NAS vienreiz jāiegūst piekļuve.
+
+Vispirms noskaidro, kā tevi sauc čaulā un kur ir tava mājas mape:
 
 ```bash
-# GitHub → Settings → Developer settings → Personal access tokens
-# → Tokens (classic) → Generate new token
-# → atzīmē TIKAI `read:packages`, derīgumu vari likt "No expiration"
-echo "<TOKEN>" | docker login ghcr.io -u rihardiii --password-stdin
+whoami; echo "HOME=$HOME"; id
 ```
 
-Tas saglabā žetonu `/root/.docker/config.json`. Jāatkārto tikai tad, ja žetonam
-beidzas derīgums vai to atsauc.
+Ja `HOME` ir `/var/empty` (vai cita mape, kurā nevar rakstīt), `docker login`
+neizdodas šādi:
 
-Pārbaude:
+```
+Error saving credentials: mkdir /var/empty/.docker: operation not permitted
+```
+
+Tas nav žetona problēma — Docker vienkārši nevar saglabāt akreditācijas datus.
+Risinājums: norādi rakstāmu mapi uz baseina ar `DOCKER_CONFIG`.
 
 ```bash
-docker pull ghcr.io/rihardiii/punktu_sistema:latest
+sudo mkdir -p /mnt/apps/.docker
+
+# Žetonu NEIELĪMĒ komandrindā — tas paliktu čaulas vēsturē.
+# Šī komanda prasīs paroli; ielīmē žetonu kā paroli.
+sudo DOCKER_CONFIG=/mnt/apps/.docker docker login ghcr.io -u rihardiii
 ```
+
+> Žetons: GitHub → Settings → Developer settings → Personal access tokens →
+> Tokens (classic) → Generate new token → atzīmē **tikai** `read:packages`.
+
+Pārbaude — šī komanda gan pārbauda pierakstīšanos, gan uzreiz lejupielādē
+attēlu:
+
+```bash
+sudo DOCKER_CONFIG=/mnt/apps/.docker docker pull ghcr.io/rihardiii/punktu_sistema:latest
+```
+
+### 2b. Kāpēc Dockge "Update" poga nepietiek
+
+Dockge pats darbojas konteinerī un izpilda `docker compose pull` ar savu
+akreditācijas datu krātuvi — tā neredz to, ko tu tikko izveidoji čaulā. Tāpēc
+privātam attēlam:
+
+- **attēlu velc no čaulas** (komanda augstāk);
+- **Dockge lieto jau lejupielādēto attēlu** — `docker compose up` neko nevelk,
+  ja attēls jau ir uz vietas.
+
+Tātad atjaunināšana ir divi soļi:
+
+```bash
+sudo DOCKER_CONFIG=/mnt/apps/.docker docker pull ghcr.io/rihardiii/punktu_sistema:latest
+```
+
+un tad Dockge → `punkti` → **Restart** (nevis Update).
+
+No termināļa to pašu var izdarīt vienā solī:
+
+```bash
+cd /opt/stacks/punkti
+sudo DOCKER_CONFIG=/mnt/apps/.docker docker compose pull
+sudo docker compose up -d
+```
+
+### 2c. Ja negribi ķēpāties ar žetoniem
+
+Padari **pakotni** publisku — repozitorijs paliek privāts:
+
+GitHub → repozitorijs → **Packages** → `punktu_sistema` → *Package settings* →
+*Change visibility* → **Public**.
+
+Tad nekāda `docker login` nav vajadzīga, Dockge **Update** poga strādā, un viss
+kļūst vienkāršāks. Ņem vērā: attēlā ir kompilētais lietotnes kods, tāpēc tas
+kļūst publiski lejupielādējams. Noslēpumu (PIN, datubāzes, žetonu) attēlā nav —
+datubāze vienmēr ir tikai pievienotajā mapē.
+
+Ja arī tas nav pieņemami, izmanto
+[nokopēšanas ceļu](#bez-git-nokopē-mapi-un-palaid) — tur nav ne žetonu, ne
+reģistra.
 
 ### 3. Izveido datu mapi
 
@@ -255,6 +315,8 @@ new D(process.env.PUNKTI_DB,{readonly:true}).backup(out)
 | Simptoms | Iemesls |
 | -------- | ------- |
 | `denied` / `unauthorized`, velkot attēlu | NAS nav pierakstījies GHCR vai žetonam beidzies derīgums. Skat. 2. soli. |
+| `Error saving credentials: mkdir /var/empty/.docker` | `HOME` norāda uz mapi, kurā nevar rakstīt. Lieto `DOCKER_CONFIG`, skat. 2. soli. |
+| Dockge **Update** neizdodas ar `unauthorized` | Dockge neredz čaulā izveidotos akreditācijas datus. Velc attēlu no čaulas un spied **Restart**, skat. 2b. |
 | `manifest unknown` | Attēls vēl nav publicēts — pārbaudi GitHub → Actions. |
 | `SQLITE_CANTOPEN` | `/mnt/apps/punkti/data` neeksistē. Skat. 3. soli. |
 | Lietotne nestartē pēc atjaunināšanas | `docker logs punkti`; atgriezies uz iepriekšējo versijas tagu. |

@@ -9,6 +9,46 @@ atkarībā no izmaiņas apjoma. `package.json` atspoguļo to semver formātā
 
 ---
 
+## [0.09] — 2026-09-14
+
+### Labots / Fixed
+
+- **`docker login` pamācība bija nepareiza TrueNAS čaulai.** README apgalvoja,
+  ka žetons nonāk `/root/.docker/config.json`, bet TrueNAS čaula bieži darbojas
+  ar `HOME=/var/empty`, un komanda beidzas ar:
+
+  ```
+  Error saving credentials: mkdir /var/empty/.docker: operation not permitted
+  ```
+
+  Tagad aprakstīts `DOCKER_CONFIG` uz rakstāmu mapi baseinā
+  (`/mnt/apps/.docker`), un vispirms — kā pārbaudīt `whoami` un `$HOME`.
+
+- **Žetons vairs netiek likts komandrindā.** Iepriekšējā `echo "<TOKEN>" |
+  docker login --password-stdin` forma atstāj žetonu čaulas vēsturē.
+  Tagad tiek izmantota interaktīvā paroles ievade.
+
+### Pievienots / Added
+
+- **Skaidrojums, kāpēc Dockge "Update" poga nestrādā ar privātu attēlu.**
+  Dockge darbojas savā konteinerī un izpilda `docker compose pull` ar savu
+  akreditācijas datu krātuvi, tāpēc tas neredz čaulā izveidotos datus.
+  Pareizā secība ir: `docker pull` no čaulas, tad Dockge → **Restart**.
+  `docker compose up` neko nevelk, ja attēls jau ir lejupielādēts.
+
+- **Sadaļa par pakotnes publiskošanu** kā vienkāršāko alternatīvu: repozitorijs
+  paliek privāts, bet attēls kļūst publisks, un tad ne `docker login`, ne
+  `DOCKER_CONFIG` nav vajadzīgs un Dockge **Update** strādā. Aprakstīts arī,
+  ko tas nozīmē (attēlā ir kompilētais kods; noslēpumu tur nav).
+
+- **Trīs jaunas rindas problēmu meklēšanas tabulā** par šīm kļūdām.
+
+### Piezīme
+
+Šīs izmaiņas ir tikai dokumentācijā un komentāros — lietotnes kods nav mainīts.
+Uz izstrādes datora nav TrueNAS un Docker, tāpēc komandas nav izpildītas tajā
+vidē; tās ir izsecinātas no kļūdas ziņojuma un Docker CLI uzvedības.
+
 ## [0.08] — 2026-09-14
 
 ### Pievienots / Added

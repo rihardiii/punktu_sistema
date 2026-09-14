@@ -4,13 +4,29 @@
 #
 # Before the first start:
 #
-#   1. Log the NAS in to GHCR once (the package is private):
-#        echo "<PAT ar read:packages>" | docker login ghcr.io -u rihardiii --password-stdin
-#   2. Create the data directory:
+#   1. Log the NAS in to GHCR once (the package is private).
+#      DOCKER_CONFIG is needed because the TrueNAS shell often runs with
+#      HOME=/var/empty, and docker login fails there with
+#      "mkdir /var/empty/.docker: operation not permitted".
+#      It prompts for a password — paste the token there rather than putting
+#      it on the command line, where it would land in your shell history.
+#
+#        sudo mkdir -p /mnt/apps/.docker
+#        sudo DOCKER_CONFIG=/mnt/apps/.docker docker login ghcr.io -u rihardiii
+#
+#   2. Pull the image from the shell (Dockge cannot: it runs in its own
+#      container and does not see the credentials you just created):
+#
+#        sudo DOCKER_CONFIG=/mnt/apps/.docker docker pull ghcr.io/rihardiii/punktu_sistema:latest
+#
+#   3. Create the data directory:
 #        mkdir -p /mnt/apps/punkti/data
 #
-# To update: Dockge → punkti → Update (pulls the new image and restarts),
-# or from a shell: docker compose pull && docker compose up -d
+# To update: repeat step 2, then Dockge → punkti → Restart. Compose only pulls
+# when the image is missing locally, so the freshly pulled one is used as is.
+#
+# Making the GHCR package public (the repo can stay private) removes all of the
+# above and makes Dockge's Update button work — see the README.
 #
 # The container starts as root, chowns /data and then drops to an
 # unprivileged user, so the directory's owner on the host does not matter.
