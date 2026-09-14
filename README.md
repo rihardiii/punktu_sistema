@@ -19,6 +19,7 @@ cloud account. Latvian interface with English built in.*
 - [Kā to lieto ģimene](#kā-to-lieto-ģimene--how-a-family-uses-it)
 - [Piekļuve no telefona](#piekļuve-no-telefona--access-from-a-phone)
 - [TrueNAS SCALE](#truenas-scale)
+- [Bez git: nokopē mapi](#bez-git-nokopē-mapi-un-palaid)
 - [Docker (jebkur)](#docker-jebkur)
 - [Atjaunināšana](#atjaunināšana)
 - [Rezerves kopijas](#rezerves-kopijas--backups)
@@ -42,7 +43,7 @@ npm start
 Serveris parādīs adreses, kuras atvērt pārlūkā:
 
 ```
-  Punktu sistēma v0.07
+  Punktu sistēma v0.08
   Datubāze / database: C:\...\punktu_sistema\data\punkti.sqlite
   Lokāli / local:      http://localhost:4173
   Tīklā / on the LAN:  http://192.168.1.132:4173
@@ -277,6 +278,86 @@ Tad stekā norādi `image: punktu-sistema:local`.
 
 ---
 
+---
+
+## Bez git: nokopē mapi un palaid
+
+Ja negribi ķēpāties ar git vai GitHub žetoniem uz NAS, lietotni var palaist
+tieši no nokopētiem failiem, izmantojot standarta `node` attēlu. Nav ne
+reģistra, ne žetonu, ne git uz NAS.
+
+### Vienreizēja uzstādīšana
+
+**1. Uz sava datora** projekta mapē:
+
+```bash
+npm install
+npm run build
+```
+
+**2. Nokopē mapi uz NAS** uz `/mnt/apps/scoreboard/app`
+(pa SMB tas ir `\\<nas>\apps\scoreboard\app`).
+
+Kopē **visu, izņemot** `node_modules`, `.git` un `data`. Kopējamais apjoms ir
+ap 3 MB.
+
+> **Nekopē `node_modules`.** Tajā ir `better-sqlite3` ar Windows binārfailu,
+> kas Linux konteinerī nedarbojas. Konteiners pats uzstāda Linux versiju.
+> Ja tomēr to nokopē, konteiners to pamana un pārinstalē.
+
+PowerShell palīgs tīras kopijas sagatavošanai:
+
+```powershell
+$src = "C:\Cloud\Seafile\Projects\code\punktu_sistema"
+$dst = "\\truenas\apps\scoreboard\app"
+robocopy $src $dst /MIR /XD node_modules .git data .github /XF *.sqlite*
+```
+
+**3. Izveido datu mapi** NAS terminālī:
+
+```bash
+mkdir -p /mnt/apps/scoreboard/data
+```
+
+**4. Ielīmē Dockge** saturu no
+[`deploy/standalone/compose.yml`](deploy/standalone/compose.yml) un **Deploy**.
+
+Pirmā palaišana aizņem dažas minūtes, kamēr uzstādās atkarības — seko līdzi
+Dockge žurnālā. Nākamās palaišanas ir ātras.
+
+### Atjaunināšana
+
+```
+  1. uz datora:  npm run build
+  2. pārkopē mapi (robocopy /MIR)
+  3. Dockge → scoreboard → Restart
+```
+
+Atkarības tiek pārinstalētas tikai tad, ja mainījies `package-lock.json` —
+konteiners to pārbauda pats. Parasts restarts ir dažas sekundes.
+
+Datubāze ir atsevišķā mapē (`/mnt/apps/scoreboard/data`), tāpēc lietotnes mapes
+pārrakstīšana nekad neaiztiek punktus.
+
+### Kad ko izvēlēties
+
+| | Nokopē mapi | GHCR attēls |
+| --- | --- | --- |
+| git uz NAS | nav vajadzīgs | nav vajadzīgs |
+| GitHub žetons | **nav vajadzīgs** | vajadzīgs (`read:packages`) |
+| `git push` | nav vajadzīgs | vajadzīgs |
+| Testi pirms izvietošanas | nē | jā, automātiski |
+| Atjaunināšana | pārkopē + restarts | Dockge → Update |
+| Atgriešanās uz veco versiju | pārkopē veco mapi | nomaini tagu |
+
+Ja git tev strādā — GHCR ceļš ir ērtāks un drošāks, jo neizlaiž versiju, kas
+nav izturējusi testus. Ja nē — šis ceļš ir pilnībā pietiekams.
+
+> Ja vajag tikai failus bez git: GitHub → repozitorijs → **Code** →
+> **Download ZIP**. Pārlūkā tas strādā arī privātam repozitorijam.
+
+---
+
 ## Docker (jebkur)
 
 Uz jebkura datora ar Docker pietiek ar:
@@ -391,7 +472,7 @@ web/             React 19 + Vite, PWA
   test/ui.mjs      Pārlūka testi (Playwright, nav obligāta atkarība)
 Dockerfile         Divpakāpju build; datubāze /data sējumā
 docker-compose.yml Parastam Docker (ar `build:`)
-deploy/            Gatavs Dockge steks TrueNAS
+deploy/            Dockge steki: GHCR attēls un "nokopē mapi"
 .github/workflows/ Testi un attēla publicēšana uz ghcr.io
 ```
 

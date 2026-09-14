@@ -9,6 +9,47 @@ atkarībā no izmaiņas apjoma. `package.json` atspoguļo to semver formātā
 
 ---
 
+## [0.08] — 2026-09-14
+
+### Pievienots / Added
+
+- **Izvietošana bez git** — [`deploy/standalone/compose.yml`](deploy/standalone/compose.yml).
+  Lietotni var palaist tieši no nokopētas mapes, izmantojot standarta
+  `node:24-bookworm` attēlu. Uz NAS nav vajadzīgs ne git, ne konteineru
+  reģistrs, ne GitHub žetons.
+
+  Uzbūvē uz sava datora (`npm run build`), nokopē mapi uz NAS koplietoto
+  mapi un palaid steku. Atjaunināšana: pārkopē un restartē.
+
+  `server/dist` un `web/dist` ir tīrs JavaScript un HTML, tāpēc tie ir
+  pārnesami starp Windows un Linux. Vienīgā platformai specifiskā daļa ir
+  `better-sqlite3` kompilētais binārfails, tāpēc `node_modules` netiek kopēts —
+  konteiners to uzstāda pats. Ja `node_modules` tomēr tiek nokopēts no Windows,
+  konteiners to pamana (`require('better-sqlite3')` pārbaude) un pārinstalē.
+
+  Atkarības tiek pārinstalētas tikai tad, ja mainījies `package-lock.json`
+  (`.deps-stamp` ar kontrolsummu), tāpēc parasts restarts ir dažas sekundes,
+  nevis minūtes.
+
+  Palaišanas skripts ir ierakstīts tieši `compose.yml` failā, nevis atsevišķā
+  `.sh` failā: no Windows nokopēts skripts nonāk ar CRLF rindu beigām un
+  neizpildās ar maldinošu kļūdu "no such file or directory".
+
+- **README tabula**, kas salīdzina abus ceļus (nokopē mapi / GHCR attēls), un
+  norāde, ka failus var lejupielādēt arī ar GitHub **Download ZIP**, ja git
+  nestrādā.
+
+### Pārbaudīts / Verified
+
+Nokopēšanas ceļš ir pārbaudīts pilnībā, lokāli:
+
+- sagatavota tīra kopija (bez `node_modules`, `.git`, `data`) — 3 MB;
+- `npm ci --omit=dev` tajā; serveris startē un apkalpo lietotni;
+- `smoke.sh` 30/30 pret šo kopiju;
+- palaišanas skripts izpildīts divreiz: pirmajā reizē uzstāda atkarības un
+  ieraksta kontrolsummu, otrajā to izlaiž un startē dažās sekundēs;
+- pārbaudīta arī kļūdas apstrāde, kad `dist` nav nokopēts.
+
 ## [0.07] — 2026-09-14
 
 ### Mainīts / Changed
