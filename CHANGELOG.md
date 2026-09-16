@@ -9,6 +9,63 @@ atkarībā no izmaiņas apjoma. `package.json` atspoguļo to semver formātā
 
 ---
 
+## [0.10] — 2026-09-16
+
+### Pievienots / Added
+
+- **PIN uzminēšanas ierobežojums.** Pieci nepareizi PIN pēc kārtas noslēdz
+  kontu uz 5 minūtēm. Slēdzene ir uz konta, nevis uz IP adreses: visa ģimene
+  sēž aiz viena maršrutētāja, tāpēc IP slēdzene izmestu no sistēmas visus, tiklīdz
+  viens bērns piecas reizes kļūdītos.
+
+  Tas atrisina arī otru problēmu: `scrypt` aizņem ~80 ms bloķējoša CPU laika
+  katram mēģinājumam, un desmit vienlaicīgi pieteikšanās pieprasījumi
+  aizkavēja visu serveri (`/api/health` no ~10 ms uz 700 ms). Slēdzene tiek
+  pārbaudīta **pirms** jaukšanas, tāpēc noslēgts konts vairs nemaksā neko.
+
+- **"Aizmirsi PIN?" pieteikums.** Pieteikšanās ekrānā zem cipariem. Bērna
+  pieteikums nonāk pie jebkura vecāka, vecāka — pie administratora. Vecāks to
+  redz kā kartīti sadaļā **Ģimene** un var uzreiz iestatīt jaunu PIN.
+  Viens atvērts pieteikums uz cilvēku, lai cik reizes pogu nospiestu.
+
+- **Administratora loma.** Viens vecāks — tas, kurš iestatīja lietotni —, kurš
+  vienīgais var atiestatīt cita vecāka aizmirsto PIN. Līdz šim to nevarēja
+  neviens, tāpēc vecāks ar aizmirstu PIN bija ārpusē uz visiem laikiem.
+
+  Tā ir karodziņš uz vecāka konta (`is_admin`), nevis trešā loma, tāpēc visas
+  esošās `role === 'parent'` pārbaudes paliek neskartas. Administratoru nevar
+  dzēst vai deaktivizēt, un lomu var nodot citam aktīvam vecākam.
+
+- **Drošības galvenes:** `Content-Security-Policy` (viss tikai no paša
+  servera), `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`.
+
+- **`LICENSE` fails (MIT).** README un `package.json` jau apgalvoja MIT, bet
+  bez faila GitHub to neatpazīst.
+
+### Labots / Fixed
+
+- **Nederīgs JSON atgrieza 500, nevis 400.** `express.json()` kļūda krita cauri
+  vispārīgajam apstrādātājam. Tagad `{"error":"invalid_json"}` ar 400.
+
+- **Versiju nesakritība `docker-compose.yml`.** Bija `punktu-sistema:0.09`,
+  kamēr CI publicē `0.10.0` no `package.json`. Tagad abi ir semver.
+
+### Mainīts / Changed
+
+- **Produkcijas būvē vairs nav sourcemap failu.** Tie pievienoja ~1.7 MB katram
+  attēlam un katra telefona kešatmiņai. `web/vite.config.ts` — viena rinda atpakaļ.
+
+- **Izvietošana pieņem publisku GHCR pakotni.** Ar publisku repozitoriju arī
+  pakotni var padarīt publisku, un tad pazūd viss `docker login` / žetona /
+  manuālās vilkšanas cikls — Dockge **Update** poga ir viss, kas vajadzīgs.
+  README TrueNAS sadaļa saīsināta no četriem soļiem ar žetoniem uz trim bez.
+
+- **Izņemts "nokopē mapi uz NAS" ceļš** (`deploy/standalone/`). Tas pastāvēja
+  tikai tāpēc, lai izvairītos no GHCR žetoniem; ar publisku pakotni tam vairs
+  nav jēgas, un tas uzturēja otru, atšķirīgi nosauktu steku (`scoreboard`).
+
+---
+
 ## [0.09] — 2026-09-14
 
 ### Labots / Fixed

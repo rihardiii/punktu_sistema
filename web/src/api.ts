@@ -4,6 +4,7 @@ import type {
   Face,
   LedgerEntry,
   Overview,
+  PinRequest,
   Redemption,
   Reward,
   Submission,
@@ -14,11 +15,14 @@ import type {
 export class ApiError extends Error {
   status: number;
   code: string;
+  /** Free-form extra from the server — the lockout countdown, for instance. */
+  detail: string | undefined;
 
-  constructor(status: number, code: string) {
+  constructor(status: number, code: string, detail?: string) {
     super(code);
     this.status = status;
     this.code = code;
+    this.detail = detail;
   }
 }
 
@@ -39,11 +43,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const data = text ? (JSON.parse(text) as unknown) : null;
 
   if (!res.ok) {
-    const code =
-      data && typeof data === 'object' && 'error' in data
-        ? String((data as { error: unknown }).error)
-        : 'server_error';
-    throw new ApiError(res.status, code);
+    const body = data && typeof data === 'object' ? (data as Record<string, unknown>) : {};
+    const code = 'error' in body ? String(body.error) : 'server_error';
+    const detail = 'detail' in body && body.detail != null ? String(body.detail) : undefined;
+    throw new ApiError(res.status, code, detail);
   }
   return data as T;
 }
@@ -64,6 +67,9 @@ export const api = {
   faces: () => get<{ users: Face[] }>('/auth/faces'),
   changePin: (currentPin: string, newPin: string) =>
     send<{ ok: true }>('POST', '/auth/change-pin', { currentPin, newPin }),
+  /** "I forgot my PIN" from the login screen — no session needed. */
+  requestPinReset: (username: string) =>
+    send<{ ok: true }>('POST', '/auth/pin-request', { username }),
 
   // --- family ---
   users: () => get<{ users: User[] }>('/users'),
@@ -79,6 +85,10 @@ export const api = {
     send<{ user: User }>('PATCH', `/users/${id}`, body),
   resetPin: (id: number, pin: string) => send<{ ok: true }>('POST', `/users/${id}/reset-pin`, { pin }),
   deleteUser: (id: number) => send<{ ok: true }>('DELETE', `/users/${id}?purge=true`),
+  pinRequests: () => get<{ requests: PinRequest[] }>('/users/pin-requests'),
+  dismissPinRequest: (id: number) =>
+    send<{ ok: true }>('POST', `/users/pin-requests/${id}/dismiss`),
+  makeAdmin: (id: number) => send<{ user: User }>('POST', `/users/${id}/make-admin`),
 
   // --- catalog ---
   deeds: (all = false) => get<{ deeds: Deed[] }>(`/catalog/deeds${all ? '?all=true' : ''}`),

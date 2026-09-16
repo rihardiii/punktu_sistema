@@ -19,7 +19,6 @@ cloud account. Latvian interface with English built in.*
 - [Kā to lieto ģimene](#kā-to-lieto-ģimene--how-a-family-uses-it)
 - [Piekļuve no telefona](#piekļuve-no-telefona--access-from-a-phone)
 - [TrueNAS SCALE](#truenas-scale)
-- [Bez git: nokopē mapi](#bez-git-nokopē-mapi-un-palaid)
 - [Docker (jebkur)](#docker-jebkur)
 - [Atjaunināšana](#atjaunināšana)
 - [Rezerves kopijas](#rezerves-kopijas--backups)
@@ -43,7 +42,7 @@ npm start
 Serveris parādīs adreses, kuras atvērt pārlūkā:
 
 ```
-  Punktu sistēma v0.09
+  Punktu sistēma v0.10
   Datubāze / database: C:\...\punktu_sistema\data\punkti.sqlite
   Lokāli / local:      http://localhost:4173
   Tīklā / on the LAN:  http://192.168.1.132:4173
@@ -137,85 +136,19 @@ palaiž testus un publicē `ghcr.io/rihardiii/punktu_sistema:latest`.
 
 Skaties **GitHub → Actions**. Pirmā reize aizņem pāris minūtes.
 
-### 2. Pieraksti NAS pie GHCR
+### 2. Padari pakotni publisku
 
-Repozitorijs un attēls ir privāti, tāpēc NAS vienreiz jāiegūst piekļuve.
-
-Vispirms noskaidro, kā tevi sauc čaulā un kur ir tava mājas mape:
-
-```bash
-whoami; echo "HOME=$HOME"; id
-```
-
-Ja `HOME` ir `/var/empty` (vai cita mape, kurā nevar rakstīt), `docker login`
-neizdodas šādi:
-
-```
-Error saving credentials: mkdir /var/empty/.docker: operation not permitted
-```
-
-Tas nav žetona problēma — Docker vienkārši nevar saglabāt akreditācijas datus.
-Risinājums: norādi rakstāmu mapi uz baseina ar `DOCKER_CONFIG`.
-
-```bash
-sudo mkdir -p /mnt/apps/.docker
-
-# Žetonu NEIELĪMĒ komandrindā — tas paliktu čaulas vēsturē.
-# Šī komanda prasīs paroli; ielīmē žetonu kā paroli.
-sudo DOCKER_CONFIG=/mnt/apps/.docker docker login ghcr.io -u rihardiii
-```
-
-> Žetons: GitHub → Settings → Developer settings → Personal access tokens →
-> Tokens (classic) → Generate new token → atzīmē **tikai** `read:packages`.
-
-Pārbaude — šī komanda gan pārbauda pierakstīšanos, gan uzreiz lejupielādē
-attēlu:
-
-```bash
-sudo DOCKER_CONFIG=/mnt/apps/.docker docker pull ghcr.io/rihardiii/punktu_sistema:latest
-```
-
-### 2b. Kāpēc Dockge "Update" poga nepietiek
-
-Dockge pats darbojas konteinerī un izpilda `docker compose pull` ar savu
-akreditācijas datu krātuvi — tā neredz to, ko tu tikko izveidoji čaulā. Tāpēc
-privātam attēlam:
-
-- **attēlu velc no čaulas** (komanda augstāk);
-- **Dockge lieto jau lejupielādēto attēlu** — `docker compose up` neko nevelk,
-  ja attēls jau ir uz vietas.
-
-Tātad atjaunināšana ir divi soļi:
-
-```bash
-sudo DOCKER_CONFIG=/mnt/apps/.docker docker pull ghcr.io/rihardiii/punktu_sistema:latest
-```
-
-un tad Dockge → `punkti` → **Restart** (nevis Update).
-
-No termināļa to pašu var izdarīt vienā solī:
-
-```bash
-cd /opt/stacks/punkti
-sudo DOCKER_CONFIG=/mnt/apps/.docker docker compose pull
-sudo docker compose up -d
-```
-
-### 2c. Ja negribi ķēpāties ar žetoniem
-
-Padari **pakotni** publisku — repozitorijs paliek privāts:
+Vienreizējs solis:
 
 GitHub → repozitorijs → **Packages** → `punktu_sistema` → *Package settings* →
 *Change visibility* → **Public**.
 
-Tad nekāda `docker login` nav vajadzīga, Dockge **Update** poga strādā, un viss
-kļūst vienkāršāks. Ņem vērā: attēlā ir kompilētais lietotnes kods, tāpēc tas
-kļūst publiski lejupielādējams. Noslēpumu (PIN, datubāzes, žetonu) attēlā nav —
-datubāze vienmēr ir tikai pievienotajā mapē.
+Pēc tam NAS nav vajadzīgs ne `docker login`, ne žetons, un Dockge **Update**
+poga strādā tā, kā gaidīts.
 
-Ja arī tas nav pieņemami, izmanto
-[nokopēšanas ceļu](#bez-git-nokopē-mapi-un-palaid) — tur nav ne žetonu, ne
-reģistra.
+Attēlā ir tikai kompilētais lietotnes kods — tas pats, kas jau ir publiskajā
+repozitorijā. Noslēpumu tur nav: datubāze vienmēr paliek pievienotajā mapē uz
+NAS, nekad attēlā.
 
 ### 3. Izveido datu mapi
 
@@ -283,7 +216,7 @@ Katrs attēls ir marķēts arī ar versijas numuru un commit SHA, ne tikai
 `latest`. Ja jaunā versija kaut ko salauž, stekā nomaini tagu:
 
 ```yaml
-    image: ghcr.io/rihardiii/punktu_sistema:0.6.0
+    image: ghcr.io/rihardiii/punktu_sistema:0.9.0
 ```
 
 un spied **Update**. Pieejamos tagus vari redzēt GitHub → **Packages**.
@@ -314,9 +247,7 @@ new D(process.env.PUNKTI_DB,{readonly:true}).backup(out)
 
 | Simptoms | Iemesls |
 | -------- | ------- |
-| `denied` / `unauthorized`, velkot attēlu | NAS nav pierakstījies GHCR vai žetonam beidzies derīgums. Skat. 2. soli. |
-| `Error saving credentials: mkdir /var/empty/.docker` | `HOME` norāda uz mapi, kurā nevar rakstīt. Lieto `DOCKER_CONFIG`, skat. 2. soli. |
-| Dockge **Update** neizdodas ar `unauthorized` | Dockge neredz čaulā izveidotos akreditācijas datus. Velc attēlu no čaulas un spied **Restart**, skat. 2b. |
+| `denied` / `unauthorized`, velkot attēlu | Pakotne vēl ir privāta. Skat. 2. soli. |
 | `manifest unknown` | Attēls vēl nav publicēts — pārbaudi GitHub → Actions. |
 | `SQLITE_CANTOPEN` | `/mnt/apps/punkti/data` neeksistē. Skat. 3. soli. |
 | Lietotne nestartē pēc atjaunināšanas | `docker logs punkti`; atgriezies uz iepriekšējo versijas tagu. |
@@ -326,97 +257,6 @@ new D(process.env.PUNKTI_DB,{readonly:true}).backup(out)
 docker logs -f punkti
 docker inspect --format '{{.State.Health.Status}}' punkti
 ```
-
-### Ja gribi būvēt pats, bez GitHub
-
-```bash
-docker build -t punktu-sistema:local .
-docker save punktu-sistema:local | gzip > punkti.tar.gz
-scp punkti.tar.gz truenas.local:/mnt/apps/
-ssh truenas.local "gunzip -c /mnt/apps/punkti.tar.gz | docker load"
-```
-
-Tad stekā norādi `image: punktu-sistema:local`.
-
----
-
----
-
-## Bez git: nokopē mapi un palaid
-
-Ja negribi ķēpāties ar git vai GitHub žetoniem uz NAS, lietotni var palaist
-tieši no nokopētiem failiem, izmantojot standarta `node` attēlu. Nav ne
-reģistra, ne žetonu, ne git uz NAS.
-
-### Vienreizēja uzstādīšana
-
-**1. Uz sava datora** projekta mapē:
-
-```bash
-npm install
-npm run build
-```
-
-**2. Nokopē mapi uz NAS** uz `/mnt/apps/scoreboard/app`
-(pa SMB tas ir `\\<nas>\apps\scoreboard\app`).
-
-Kopē **visu, izņemot** `node_modules`, `.git` un `data`. Kopējamais apjoms ir
-ap 3 MB.
-
-> **Nekopē `node_modules`.** Tajā ir `better-sqlite3` ar Windows binārfailu,
-> kas Linux konteinerī nedarbojas. Konteiners pats uzstāda Linux versiju.
-> Ja tomēr to nokopē, konteiners to pamana un pārinstalē.
-
-PowerShell palīgs tīras kopijas sagatavošanai:
-
-```powershell
-$src = "C:\Cloud\Seafile\Projects\code\punktu_sistema"
-$dst = "\\truenas\apps\scoreboard\app"
-robocopy $src $dst /MIR /XD node_modules .git data .github /XF *.sqlite*
-```
-
-**3. Izveido datu mapi** NAS terminālī:
-
-```bash
-mkdir -p /mnt/apps/scoreboard/data
-```
-
-**4. Ielīmē Dockge** saturu no
-[`deploy/standalone/compose.yml`](deploy/standalone/compose.yml) un **Deploy**.
-
-Pirmā palaišana aizņem dažas minūtes, kamēr uzstādās atkarības — seko līdzi
-Dockge žurnālā. Nākamās palaišanas ir ātras.
-
-### Atjaunināšana
-
-```
-  1. uz datora:  npm run build
-  2. pārkopē mapi (robocopy /MIR)
-  3. Dockge → scoreboard → Restart
-```
-
-Atkarības tiek pārinstalētas tikai tad, ja mainījies `package-lock.json` —
-konteiners to pārbauda pats. Parasts restarts ir dažas sekundes.
-
-Datubāze ir atsevišķā mapē (`/mnt/apps/scoreboard/data`), tāpēc lietotnes mapes
-pārrakstīšana nekad neaiztiek punktus.
-
-### Kad ko izvēlēties
-
-| | Nokopē mapi | GHCR attēls |
-| --- | --- | --- |
-| git uz NAS | nav vajadzīgs | nav vajadzīgs |
-| GitHub žetons | **nav vajadzīgs** | vajadzīgs (`read:packages`) |
-| `git push` | nav vajadzīgs | vajadzīgs |
-| Testi pirms izvietošanas | nē | jā, automātiski |
-| Atjaunināšana | pārkopē + restarts | Dockge → Update |
-| Atgriešanās uz veco versiju | pārkopē veco mapi | nomaini tagu |
-
-Ja git tev strādā — GHCR ceļš ir ērtāks un drošāks, jo neizlaiž versiju, kas
-nav izturējusi testus. Ja nē — šis ceļš ir pilnībā pietiekams.
-
-> Ja vajag tikai failus bez git: GitHub → repozitorijs → **Code** →
-> **Download ZIP**. Pārlūkā tas strādā arī privātam repozitorijam.
 
 ---
 
@@ -494,18 +334,50 @@ pašas. Faili `-wal` un `-shm` ir SQLite darba faili; kopē tos līdzi.
 
 - PIN kodi tiek glabāti jaukti (`scrypt` ar individuālu sāli), nekad atklātā
   tekstā, un nekad netiek atgriezti API atbildēs.
+- Pieci nepareizi PIN pēc kārtas noslēdz kontu uz 5 minūtēm.
 - Sesijas ir `httpOnly` sīkdatnēs ar 30 dienu derīgumu.
 - Bērns nevar redzēt brāļa vai māsas punktus, vēsturi vai pieteikumus.
 - Bērns nevar apstiprināt savu pieteikumu, mainīt darbu vērtības vai piešķirt
   sev punktus.
 - Pēdējo aktīvo vecāku nevar deaktivizēt vai dzēst.
-- Vecāks nevar nomainīt cita vecāka PIN (tikai savu un bērnu).
+- Vecāks nevar nomainīt cita vecāka PIN — to drīkst tikai administrators.
+- Atbildes nes `Content-Security-Policy`, kas atļauj tikai paša servera
+  resursus, plus `nosniff` un `same-origin` nosūtītāja politiku.
 
-**Ko tā apzināti nedara:** nav HTTPS, nav aizsardzības pret PIN uzminēšanu
-brutālā spēkā, un pieteikšanās ekrāns rāda ģimenes vārdus ikvienam, kas atver
-adresi. Tas ir apzināts kompromiss lietojamībai mājās. **Nepublicē šo lietotni
-internetā** un neatver tai portu maršrutētājā. Ja vajag piekļuvi no ārpuses,
-izmanto VPN (piemēram, WireGuard vai Tailscale).
+**Ko tā apzināti nedara:** nav HTTPS, un pieteikšanās ekrāns rāda ģimenes
+vārdus ikvienam, kas atver adresi. Tas ir apzināts kompromiss lietojamībai
+mājās. Slēdzene aizkavē PIN uzminēšanu, bet 4 ciparu PIN paliek 4 ciparu PIN.
+**Nepublicē šo lietotni internetā** un neatver tai portu maršrutētājā. Ja vajag
+piekļuvi no ārpuses, izmanto VPN (piemēram, WireGuard vai Tailscale).
+
+### Administrators
+
+Viens vecāks ir **administrators** — tas, kurš iestatīja lietotni. Tikai viņš
+var atiestatīt cita vecāka aizmirsto PIN, viņu nevar dzēst vai deaktivizēt, un
+lomu var nodot citam aktīvam vecākam sadaļā **Ģimene** (🛡️ poga).
+
+Ja kāds aizmirst savu PIN, pieteikšanās ekrānā ir **"Aizmirsi PIN?"**. Bērna
+pieteikums nonāk pie jebkura vecāka, vecāka — pie administratora, un parādās
+kā kartīte sadaļā **Ģimene**.
+
+**Ja administrators aizmirst savu PIN**, neviens no lietotnes to nevar
+atiestatīt — jāiet pie datubāzes uz servera. Konteinerī jau ir viss vajadzīgais
+(`4321` ir jaunais PIN, ko izvēlies pats):
+
+```bash
+sudo docker exec -it punkti node -e "
+const {scryptSync,randomBytes}=require('crypto');
+const Database=require('better-sqlite3');
+const db=new Database(process.env.PUNKTI_DB);
+const salt=randomBytes(16).toString('hex');
+const hash=scryptSync(process.argv[1],salt,64).toString('hex');
+db.prepare('UPDATE users SET pin_hash=?, pin_salt=? WHERE is_admin=1').run(hash,salt);
+db.prepare('DELETE FROM sessions').run();
+console.log('PIN nomainīts / PIN changed');
+" 4321
+```
+
+Sesijas tiek dzēstas, tāpēc visas ierīces būs jāpiesakās no jauna.
 
 ---
 
@@ -565,4 +437,5 @@ Versiju shēma ir `0.01`, `0.02`, … kā aprakstīts [`CHANGELOG.md`](CHANGELOG
 
 ## Licence
 
-MIT
+MIT — pilns teksts ir [`LICENSE`](LICENSE) failā. Drīkst lietot, mainīt un
+izplatīt, arī komerciāli; jāsaglabā autortiesību paziņojums.

@@ -119,11 +119,82 @@ MEID=$(api "$P_JAR" GET /api/auth/me | j "['user']['id']")
 check "cannot deactivate last parent" \
   "$(api "$P_JAR" PATCH "/api/users/$MEID" '{"active":false}' | j "['error']")" "last_parent"
 
+echo "== admin role =="
+check "the parent who ran setup is the admin" \
+  "$(api "$P_JAR" GET /api/auth/me | j "['user']['is_admin']")" "True"
+
+D_JAR=$(mktemp)
+DAD=$(api "$P_JAR" POST /api/users '{"name":"Tetis","username":"tetis","pin":"4444","role":"parent"}' | j "['user']['id']")
+api "$D_JAR" POST /api/auth/login '{"username":"tetis","pin":"4444"}' > /dev/null
+check "a parent added later is not admin" \
+  "$(api "$D_JAR" GET /api/auth/me | j "['user']['is_admin']")" "False"
+check "plain parent cannot deactivate the admin" \
+  "$(api "$D_JAR" PATCH "/api/users/$MEID" '{"active":false}' | j "['error']")" "admin_only"
+check "admin cannot be deleted" \
+  "$(api "$D_JAR" DELETE "/api/users/$MEID?purge=true" | j "['error']")" "admin_only"
+
+echo "== forgotten PIN requests =="
+api "$K_JAR" POST /api/auth/pin-request '{"username":"bruno"}' > /dev/null
+api "$K_JAR" POST /api/auth/pin-request '{"username":"bruno"}' > /dev/null
+check "tapping twice files one request" \
+  "$(api "$D_JAR" GET /api/users/pin-requests | jx "len(d['requests'])")" "1"
+check "an unknown username files nothing" \
+  "$(api "$K_JAR" POST /api/auth/pin-request '{"username":"nobody"}' | j "['ok']")" "True"
+check "still one request" \
+  "$(api "$D_JAR" GET /api/users/pin-requests | jx "len(d['requests'])")" "1"
+
+api "$K_JAR" POST /api/auth/pin-request '{"username":"tetis"}' > /dev/null
+check "a plain parent sees only the kids' requests" \
+  "$(api "$D_JAR" GET /api/users/pin-requests | jx "len(d['requests'])")" "1"
+check "the admin also sees a parent's request" \
+  "$(api "$P_JAR" GET /api/users/pin-requests | jx "len(d['requests'])")" "2"
+
+check "a parent cannot reset another parent's PIN" \
+  "$(api "$D_JAR" POST "/api/users/$MEID/reset-pin" '{"pin":"9876"}' | j "['error']")" "admin_only"
+check "the admin can reset a parent's PIN" \
+  "$(api "$P_JAR" POST "/api/users/$DAD/reset-pin" '{"pin":"4545"}' | j "['ok']")" "True"
+check "the reset closed that request" \
+  "$(api "$P_JAR" GET /api/users/pin-requests | jx "len(d['requests'])")" "1"
+# The reset logged every device out, so the new PIN is the only way back in.
+check "the new PIN works" \
+  "$(api "$D_JAR" POST /api/auth/login '{"username":"tetis","pin":"4545"}' | j "['user']['name']")" "Tetis"
+
+echo "== admin handover =="
+check "the admin can hand the role over" \
+  "$(api "$P_JAR" POST "/api/users/$DAD/make-admin" | j "['user']['is_admin']")" "True"
+check "the previous admin lost it" \
+  "$(api "$P_JAR" GET /api/auth/me | j "['user']['is_admin']")" "False"
+check "a non-admin cannot grant it" \
+  "$(api "$P_JAR" POST "/api/users/$MEID/make-admin" | j "['error']")" "admin_only"
+
+echo "== wrong-PIN lockout =="
+# A throwaway account, so locking it out cannot disturb anything above.
+api "$D_JAR" POST /api/users '{"name":"Lote","username":"lote","pin":"3333","role":"kid"}' > /dev/null
+L_JAR=$(mktemp)
+for _ in 1 2 3 4; do
+  api "$L_JAR" POST /api/auth/login '{"username":"lote","pin":"0000"}' > /dev/null
+done
+check "the 5th wrong PIN locks the account" \
+  "$(api "$L_JAR" POST /api/auth/login '{"username":"lote","pin":"0000"}' | j "['error']")" \
+  "too_many_attempts"
+# The point of the lock: even the correct PIN is refused while it holds.
+check "the correct PIN is refused while locked" \
+  "$(api "$L_JAR" POST /api/auth/login '{"username":"lote","pin":"3333"}' | j "['error']")" \
+  "too_many_attempts"
+check "the lock is per account, not per device" \
+  "$(api "$L_JAR" POST /api/auth/login '{"username":"anna","pin":"1111"}' | j "['user']['name']")" \
+  "Anna"
+
+echo "== malformed input =="
+check "unparseable JSON is a 400, not a 500" \
+  "$(curl -s -X POST -H 'Content-Type: application/json' -d '{bad' "$BASE/api/auth/login" | j "['error']")" \
+  "invalid_json"
+
 echo "== logout =="
 api "$K_JAR" POST /api/auth/logout > /dev/null
 check "session ended" "$(api "$K_JAR" GET /api/auth/me | j "['user']")" "None"
 
-rm -f "$P_JAR" "$K_JAR"
+rm -f "$P_JAR" "$K_JAR" "$D_JAR" "$L_JAR"
 echo
 if [ "$FAILED" = 0 ]; then echo "ALL PASSED"; else echo "SOME TESTS FAILED"; fi
 exit $FAILED

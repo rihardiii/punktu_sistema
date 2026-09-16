@@ -77,6 +77,18 @@ export function requireParent(req: Request, res: Response, next: NextFunction): 
   next();
 }
 
+export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
+  if (!req.user) {
+    res.status(401).json({ error: 'unauthorized' });
+    return;
+  }
+  if (!req.user.is_admin) {
+    res.status(403).json({ error: 'admin_only' });
+    return;
+  }
+  next();
+}
+
 export function setSessionCookie(res: Response, token: string): void {
   res.cookie(SESSION_COOKIE, token, {
     httpOnly: true,

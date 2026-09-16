@@ -53,6 +53,26 @@ const lv = {
   logOut: 'Iziet',
   wrongPin: 'Nepareizs PIN. Mēģini vēlreiz!',
   noUsers: 'Neviens lietotājs vēl nav izveidots',
+  forgotPin: 'Aizmirsi PIN?',
+  forgotPinLead:
+    'Nosūtīsim ziņu vecākiem, ka esi aizmirsis savu PIN. Viņi to atiestatīs un pateiks tev jauno.',
+  forgotPinAdminLead:
+    'Nosūtīsim ziņu administratoram, ka esi aizmirsis savu PIN. Viņš to atiestatīs un pateiks tev jauno.',
+  sendRequest: 'Nosūtīt',
+  pinRequestSent: 'Nosūtīts! Pajautā vecākiem jauno PIN 🔑',
+  lockedOut: 'Pārāk daudz mēģinājumu. Pamēģini pēc {n} min.',
+
+  // admin
+  admin: 'Administrators',
+  adminBadge: '🛡️ Administrators',
+  makeAdmin: 'Padarīt par administratoru',
+  makeAdminWarn:
+    'Administrators kļūs {name}, un tu zaudēsi šo lomu. Tikai administrators var atiestatīt cita vecāka PIN.',
+  adminTransferred: 'Administrators nomainīts',
+  pinRequestsTitle: 'PIN atiestatīšanas pieprasījumi',
+  pinRequestFrom: 'aizmirsa savu PIN',
+  dismiss: 'Noraidīt',
+  dismissed: 'Noraidīts',
 
   // setup
   setupTitle: 'Sveiki!',
@@ -197,6 +217,10 @@ const lv = {
   err_out_of_range: 'Skaitlis ir ārpus atļautā diapazona',
   err_invalid_field: 'Nederīga vērtība',
   err_cannot_delete_self: 'Sevi dzēst nevar',
+  err_admin_only: 'To drīkst darīt tikai administrators',
+  err_active_parent_required: 'Administrators var būt tikai aktīvs vecāks',
+  err_too_many_attempts: 'Pārāk daudz mēģinājumu. Pamēģini pēc brīža.',
+  err_invalid_json: 'Nederīgs pieprasījums',
   err_server_error: 'Radās kļūda. Mēģini vēlreiz.',
 };
 
@@ -246,6 +270,25 @@ const en: Partial<Dict> = {
   logOut: 'Log out',
   wrongPin: 'Wrong PIN. Try again!',
   noUsers: 'No users created yet',
+  forgotPin: 'Forgot your PIN?',
+  forgotPinLead:
+    "We'll let your parents know you have forgotten your PIN. They can reset it and tell you the new one.",
+  forgotPinAdminLead:
+    "We'll let the admin know you have forgotten your PIN. They can reset it and tell you the new one.",
+  sendRequest: 'Send',
+  pinRequestSent: 'Sent! Ask a parent for your new PIN 🔑',
+  lockedOut: 'Too many attempts. Try again in {n} min.',
+
+  admin: 'Admin',
+  adminBadge: '🛡️ Admin',
+  makeAdmin: 'Make admin',
+  makeAdminWarn:
+    '{name} becomes the admin and you lose the role. Only the admin can reset another parent’s PIN.',
+  adminTransferred: 'Admin transferred',
+  pinRequestsTitle: 'PIN reset requests',
+  pinRequestFrom: 'forgot their PIN',
+  dismiss: 'Dismiss',
+  dismissed: 'Dismissed',
 
   setupTitle: 'Welcome!',
   setupLead: "Let's create the first parent account. Then you can add kids and other family members.",
@@ -378,6 +421,10 @@ const en: Partial<Dict> = {
   err_out_of_range: 'Number is out of range',
   err_invalid_field: 'Invalid value',
   err_cannot_delete_self: 'You cannot delete yourself',
+  err_admin_only: 'Only the admin can do that',
+  err_active_parent_required: 'Only an active parent can be the admin',
+  err_too_many_attempts: 'Too many attempts. Please try again shortly.',
+  err_invalid_json: 'Invalid request',
   err_server_error: 'Something went wrong. Please try again.',
 };
 

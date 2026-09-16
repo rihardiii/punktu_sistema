@@ -25,3 +25,25 @@ git repo: https://github.com/rihardiii/punktu_sistema.git
 [x] friendly to parents as well
 [x] adding a new family member: when typing in the name / username / pin it automatically deselects the text box after one keypress on windoes brave browser (havent tested on others)
 [x] need a way to run the "server" on truenas. docker? just a script?
+[x] limit wront pin input to 5 times with 5min timeout after that
+[x] add pin change request that goes to parents
+[x] parents can change the pin if request is sent to admin, which can see all the users in a dashboard (that will be me)
+[x] Malformed JSON returns 500 instead of 400. - fix this
+[x] Version mismatch in the compose file. - fix this
+[x] add open source licence — MIT. Note: "free to use but not distribute, no
+    commercial use" is not open source; no OSI licence allows it. MIT was chosen
+    because README and package.json already declared it. To actually forbid
+    commercial use later, swap LICENSE for PolyForm Noncommercial 1.0.0.
+[x] fix other stuff if there are any
+    - security headers (CSP, nosniff, referrer policy)
+    - production sourcemaps dropped (~1.7 MB off every image and phone precache)
+
+[x] make the GHCR package public — docs and stack file now assume a public
+    package: the docker login / token / manual pull dance is gone, and Dockge's
+    Update button is the whole update story. Also dropped the "copy the folder
+    to the NAS" path (deploy/standalone), which only existed to avoid tokens.
+
+Jādara pašam / do this yourself (cannot be done from here):
+[ ] GitHub -> repo -> Packages -> punktu_sistema -> Package settings ->
+    Change visibility -> Public. Until this is clicked, the NAS will get
+    "denied / unauthorized" when it pulls the image.

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, ApiError } from '../api.ts';
 import { useAuth } from '../auth.tsx';
 import { useErrorText, useI18n } from '../i18n.tsx';
-import { Avatar, Button, Card, Empty, LoadingScreen } from '../components/ui.tsx';
+import { Avatar, Button, Card, Empty, LoadingScreen, Modal, useToast } from '../components/ui.tsx';
 import { PinPad } from '../components/PinPad.tsx';
 import type { Face } from '../types.ts';
 
@@ -13,6 +13,7 @@ import type { Face } from '../types.ts';
 export function Login() {
   const { t } = useI18n();
   const errorText = useErrorText();
+  const toast = useToast();
   const { login } = useAuth();
 
   const [faces, setFaces] = useState<Face[] | null>(null);
@@ -21,6 +22,7 @@ export function Login() {
   const [error, setError] = useState('');
   const [shake, setShake] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [askingReset, setAskingReset] = useState(false);
 
   useEffect(() => {
     api
@@ -36,10 +38,30 @@ export function Login() {
     try {
       await login(selected.username, pin);
     } catch (err) {
-      setError(errorText(err instanceof ApiError ? err.code : 'server_error'));
+      // A lockout carries the seconds left, so say when to come back rather
+      // than leaving a kid tapping at a PIN that cannot work yet.
+      if (err instanceof ApiError && err.code === 'too_many_attempts' && err.detail) {
+        setError(t('lockedOut', { n: Math.max(1, Math.ceil(Number(err.detail) / 60)) }));
+      } else {
+        setError(errorText(err instanceof ApiError ? err.code : 'server_error'));
+      }
       setPin('');
       setShake(true);
       setTimeout(() => setShake(false), 500);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const requestReset = async () => {
+    if (!selected) return;
+    setBusy(true);
+    try {
+      await api.requestPinReset(selected.username);
+      toast.show(t('pinRequestSent'), 'good');
+      setAskingReset(false);
+    } catch {
+      toast.show(errorText('server_error'), 'bad');
     } finally {
       setBusy(false);
     }
@@ -76,7 +98,32 @@ export function Login() {
           >
             {t('back')}
           </Button>
+          <button className="link-button" onClick={() => setAskingReset(true)}>
+            {t('forgotPin')}
+          </button>
         </div>
+
+        {askingReset && (
+          <Modal
+            title={t('forgotPin')}
+            onClose={() => setAskingReset(false)}
+            footer={
+              <>
+                <Button variant="ghost" onClick={() => setAskingReset(false)}>
+                  {t('cancel')}
+                </Button>
+                <Button variant="primary" busy={busy} onClick={requestReset}>
+                  {t('sendRequest')}
+                </Button>
+              </>
+            }
+          >
+            {/* A parent's request goes to the admin, a kid's to any parent. */}
+            <p className="muted">
+              {selected.role === 'parent' ? t('forgotPinAdminLead') : t('forgotPinLead')}
+            </p>
+          </Modal>
+        )}
       </div>
     );
   }

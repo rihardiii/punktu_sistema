@@ -39,5 +39,8 @@ export default defineConfig({
     host: true,
     proxy: { '/api': { target: API_TARGET, changeOrigin: true } },
   },
-  build: { outDir: 'dist', sourcemap: true },
+  // No sourcemaps in the shipped bundle: they added ~1.7 MB to every image and
+  // to every phone's precache, and the source they map back to is a public
+  // repo anyway. Flip to true when you need to debug a production build.
+  build: { outDir: 'dist', sourcemap: false },
 });

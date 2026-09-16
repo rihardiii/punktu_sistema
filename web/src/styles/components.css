@@ -400,6 +400,31 @@
   background: var(--bad-soft);
   color: var(--bad);
 }
+.badge-admin {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ---------- Link button ---------- */
+
+/* A quiet, text-only action — "Forgot your PIN?" under the login keypad.
+   Deliberately not a .btn: it must read as a footnote, not a third choice
+   competing with "Log in" and "Back". */
+.link-button {
+  background: none;
+  border: 0;
+  padding: var(--s2);
+  color: var(--text-3);
+  font: inherit;
+  font-size: 0.86rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  color: var(--text);
+}
 
 /* ---------- Avatar ---------- */
 

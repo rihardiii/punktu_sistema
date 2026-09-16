@@ -11,7 +11,9 @@ services:
     # On TrueNAS, `build:` is not available — publish the image or build it
     # elsewhere and reference it here instead.
     build: .
-    image: punktu-sistema:0.09
+    # Semver, to match package.json and the tag CI publishes to GHCR. The app's
+    # own scheme (0.10) is what the UI shows; 0.10 -> 0.10.0 here.
+    image: punktu-sistema:0.10.0
     restart: unless-stopped
 
     ports:

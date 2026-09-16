@@ -1,11 +1,19 @@
 import { Router } from 'express';
 import { db } from '../db.ts';
-import { hashPin, requireParent, requireUser } from '../auth.ts';
+import { hashPin, requireAdmin, requireParent, requireUser } from '../auth.ts';
 import { toPublicUser, type Role, type UserRow } from '../types.ts';
 import { HttpError, bool, id, optStr, pin as vPin, str, username as vUsername } from '../validate.ts';
 import { balanceOf } from '../points.ts';
 
 export const usersRouter = Router();
+
+/** Marks any open "I forgot my PIN" request for this user as dealt with. */
+function resolvePinRequest(userId: number, resolverId: number): void {
+  db.prepare(
+    `UPDATE pin_requests SET status = 'resolved', resolved_at = datetime('now'), resolved_by = ?
+     WHERE user_id = ? AND status = 'pending'`,
+  ).run(resolverId, userId);
+}
 
 /**
  * Family list. Parents see everyone; a kid sees only themselves, so one kid
@@ -25,6 +33,61 @@ usersRouter.get('/', requireUser, (req, res) => {
       balance: row.role === 'kid' ? balanceOf(row.id) : null,
     })),
   });
+});
+
+/**
+ * Open "I forgot my PIN" requests. A parent sees the kids'; the admin also
+ * sees the other parents', because resetting those is the admin's job alone.
+ */
+usersRouter.get('/pin-requests', requireParent, (req, res) => {
+  const rows = db
+    .prepare(
+      `SELECT r.id, r.user_id, r.created_at,
+              u.name, u.username, u.role, u.avatar, u.color
+       FROM pin_requests r JOIN users u ON u.id = r.user_id
+       WHERE r.status = 'pending' ${req.user!.is_admin ? '' : "AND u.role = 'kid'"}
+       ORDER BY r.created_at`,
+    )
+    .all();
+  res.json({ requests: rows });
+});
+
+/** Clears a request without changing the PIN — "I asked them in person". */
+usersRouter.post('/pin-requests/:id/dismiss', requireParent, (req, res) => {
+  const requestId = id(req.params.id, 'id');
+  const row = db
+    .prepare(
+      `SELECT r.id, u.role FROM pin_requests r JOIN users u ON u.id = r.user_id
+       WHERE r.id = ? AND r.status = 'pending'`,
+    )
+    .get(requestId) as { id: number; role: Role } | undefined;
+  if (!row) throw new HttpError(404, 'not_found');
+  if (row.role === 'parent' && !req.user!.is_admin) throw new HttpError(403, 'admin_only');
+
+  db.prepare(
+    `UPDATE pin_requests SET status = 'dismissed', resolved_at = datetime('now'), resolved_by = ?
+     WHERE id = ?`,
+  ).run(req.user!.id, requestId);
+  res.json({ ok: true });
+});
+
+/**
+ * Hands the admin role to another parent. Demote-then-promote in one
+ * transaction so there is never a moment with two admins, or none.
+ */
+usersRouter.post('/:id/make-admin', requireAdmin, (req, res) => {
+  const userId = id(req.params.id, 'id');
+  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as UserRow | undefined;
+  if (!row) throw new HttpError(404, 'not_found');
+  if (row.role !== 'parent' || row.active !== 1) throw new HttpError(409, 'active_parent_required');
+
+  db.transaction(() => {
+    db.prepare('UPDATE users SET is_admin = 0 WHERE is_admin = 1').run();
+    db.prepare('UPDATE users SET is_admin = 1 WHERE id = ?').run(userId);
+  })();
+
+  const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as UserRow;
+  res.json({ user: toPublicUser(updated) });
 });
 
 usersRouter.post('/', requireParent, (req, res) => {
@@ -60,6 +123,10 @@ usersRouter.patch('/:id', requireParent, (req, res) => {
   const color = req.body?.color === undefined ? row.color : optStr(req.body.color, 'color', 16);
   const active = bool(req.body?.active, row.active === 1);
 
+  // The admin is the only route back in after a forgotten parent PIN, so the
+  // parents who depend on that cannot switch it off. The admin still can.
+  if (row.is_admin === 1 && !req.user!.is_admin) throw new HttpError(403, 'admin_only');
+
   // Never let the last active parent be deactivated — that locks everyone out.
   if (!active && row.role === 'parent') {
     const { n } = db
@@ -86,12 +153,16 @@ usersRouter.post('/:id/reset-pin', requireParent, (req, res) => {
   const userId = id(req.params.id, 'id');
   const row = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as UserRow | undefined;
   if (!row) throw new HttpError(404, 'not_found');
-  // A parent resetting another parent's PIN would be an account takeover.
-  if (row.role === 'parent' && row.id !== req.user!.id) throw new HttpError(403, 'forbidden');
+  // A parent resetting another parent's PIN would be an account takeover — so
+  // only the admin may, and that is the whole reason the admin role exists.
+  if (row.role === 'parent' && row.id !== req.user!.id && !req.user!.is_admin) {
+    throw new HttpError(403, 'admin_only');
+  }
 
   const { hash, salt } = hashPin(vPin(req.body?.pin));
   db.prepare('UPDATE users SET pin_hash = ?, pin_salt = ? WHERE id = ?').run(hash, salt, userId);
   db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
+  resolvePinRequest(userId, req.user!.id);
   res.json({ ok: true });
 });
 
@@ -104,6 +175,7 @@ usersRouter.delete('/:id', requireParent, (req, res) => {
   if (userId === req.user!.id) throw new HttpError(409, 'cannot_delete_self');
   const row = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as UserRow | undefined;
   if (!row) throw new HttpError(404, 'not_found');
+  if (row.is_admin === 1) throw new HttpError(403, 'admin_only');
 
   if (req.query.purge !== 'true') throw new HttpError(400, 'confirm_purge_required');
 

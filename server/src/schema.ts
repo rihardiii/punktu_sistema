@@ -115,4 +115,36 @@ export const MIGRATIONS: string[] = [
   CREATE INDEX idx_ledger_kid ON ledger(kid_id, created_at);
   CREATE UNIQUE INDEX idx_ledger_ref ON ledger(ref_type, ref_id) WHERE ref_id IS NOT NULL;
   `,
+
+  // --- v2: admin flag and PIN reset requests ------------------------------
+  `
+  -- Admin is a flag on a parent, not a third role, so every existing
+  -- role === 'parent' check keeps working untouched. Exactly one user carries
+  -- it: the person who set the app up, and whoever they later hand it to.
+  ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0;
+
+  -- Existing databases predate the flag: the first parent ever created is the
+  -- one who ran setup, so they inherit it.
+  UPDATE users SET is_admin = 1
+   WHERE id = (SELECT id FROM users WHERE role = 'parent' ORDER BY id LIMIT 1);
+
+  -- "I forgot my PIN" — filed from the login screen by someone who by
+  -- definition cannot log in, so this table is written without a session.
+  -- A kid's request is handled by any parent; a parent's only by the admin.
+  CREATE TABLE pin_requests (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status      TEXT    NOT NULL DEFAULT 'pending'
+                        CHECK (status IN ('pending', 'resolved', 'dismissed')),
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    resolved_at TEXT,
+    resolved_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+  );
+  CREATE INDEX idx_pin_requests_status ON pin_requests(status, created_at);
+
+  -- One open request per person. Without this, tapping "forgot my PIN" ten
+  -- times would put ten identical rows in front of a parent.
+  CREATE UNIQUE INDEX idx_pin_requests_open ON pin_requests(user_id)
+    WHERE status = 'pending';
+  `,
 ];

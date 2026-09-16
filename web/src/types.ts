@@ -10,7 +10,21 @@ export interface User {
   color: string;
   active: boolean;
   created_at: string;
+  /** The one parent who can reset another parent's forgotten PIN. */
+  is_admin: boolean;
   balance?: number | null;
+}
+
+/** An open "I forgot my PIN", filed from the login screen. */
+export interface PinRequest {
+  id: number;
+  user_id: number;
+  created_at: string;
+  name: string;
+  username: string;
+  role: Role;
+  avatar: string;
+  color: string;
 }
 
 export interface Face {

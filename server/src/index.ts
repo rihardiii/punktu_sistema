@@ -6,6 +6,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import cookieParser from 'cookie-parser';
 import { dbPath } from './db.ts';
 import { loadUser, pruneSessions } from './auth.ts';
+import { pruneLockouts } from './ratelimit.ts';
 import { HttpError } from './validate.ts';
 import { authRouter } from './routes/auth.ts';
 import { usersRouter } from './routes/users.ts';
@@ -25,6 +26,35 @@ const webDist = resolve(here, '..', '..', 'web', 'dist');
 
 const app = express();
 app.disable('x-powered-by');
+
+/*
+ * Conservative headers. Everything this app needs is same-origin, so the
+ * policy can simply say so — nothing here loads a font, a script or an image
+ * from the internet, and it never should.
+ *
+ * `style-src` has to allow inline: the UI positions things with React
+ * `style={{ ... }}` attributes throughout, which a strict policy would blank.
+ */
+app.use((_req, res, next) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "script-src 'self'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data:",
+      "connect-src 'self'",
+      "worker-src 'self'",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join('; '),
+  );
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'same-origin');
+  next();
+});
+
 app.use(express.json({ limit: '256kb' }));
 app.use(cookieParser());
 app.use(loadUser);
@@ -57,6 +87,12 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     res.status(err.status).json({ error: err.code, detail: err.detail });
     return;
   }
+  // A body express.json() could not parse is the caller's mistake, not ours.
+  // Without this it fell through below and was reported as a 500.
+  if (err instanceof SyntaxError && 'body' in err) {
+    res.status(400).json({ error: 'invalid_json' });
+    return;
+  }
   console.error('[error]', err);
   res.status(500).json({ error: 'server_error' });
 });
@@ -71,6 +107,7 @@ function lanAddresses(): string[] {
 
 pruneSessions();
 setInterval(pruneSessions, 6 * 60 * 60 * 1000).unref();
+setInterval(pruneLockouts, 10 * 60 * 1000).unref();
 
 app.listen(PORT, HOST, () => {
   console.log(`\n  Punktu sistēma v${version}`);

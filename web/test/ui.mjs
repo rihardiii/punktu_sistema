@@ -110,6 +110,50 @@ check(
   'INPUT',
 );
 
+console.log('== the admin is marked in the family list ==');
+await page.keyboard.press('Escape');
+await page.waitForTimeout(300);
+await page.locator('.tab', { hasText: 'Ģimene' }).click();
+await page.waitForTimeout(700);
+// Mamma ran setup, so she is the admin; Anna is a kid and must not be marked.
+check('setup parent carries the admin badge', await page.locator('.badge-admin').count(), 1);
+
+console.log('== a kid asks for a PIN reset from the login screen ==');
+await page.locator('.tab', { hasText: 'Iestatījumi' }).click();
+await page.waitForTimeout(500);
+await page.getByRole('button', { name: /Iziet/ }).click();
+await page.waitForTimeout(900);
+check('back at the login screen', await page.locator('.face').count(), 2);
+
+await page.locator('.face', { hasText: 'Anna' }).click();
+await page.waitForTimeout(500);
+await page.getByRole('button', { name: /Aizmirsi PIN/ }).click();
+await page.waitForTimeout(400);
+check('the forgot-PIN dialog opened', await page.locator('.modal').count(), 1);
+await page.getByRole('button', { name: 'Nosūtīt' }).click();
+await page.waitForTimeout(800);
+check('the dialog closed after sending', await page.locator('.modal').count(), 0);
+
+console.log('== the request reaches the parent ==');
+await page.getByRole('button', { name: 'Atpakaļ' }).click();
+await page.waitForTimeout(400);
+await page.locator('.face', { hasText: 'Mamma' }).click();
+await page.waitForTimeout(400);
+for (const digit of '1234') {
+  await page.locator('.pin-key', { hasText: digit }).first().click();
+  await page.waitForTimeout(80);
+}
+// The keypad has no ✓ key — it submits on Enter or the button below it.
+await page.getByRole('button', { name: 'Ieiet' }).click();
+await page.waitForTimeout(1400);
+await page.locator('.tab', { hasText: 'Ģimene' }).click();
+await page.waitForTimeout(800);
+check(
+  'the PIN request card is waiting',
+  await page.locator('.card', { hasText: 'PIN atiestatīšanas' }).count(),
+  1,
+);
+
 console.log('\nconsole errors:', consoleErrors.length ? consoleErrors.join('; ') : 'none');
 if (consoleErrors.length) failed = 1;
 
