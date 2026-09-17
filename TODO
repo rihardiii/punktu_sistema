@@ -44,6 +44,16 @@ git repo: https://github.com/rihardiii/punktu_sistema.git
     to the NAS" path (deploy/standalone), which only existed to avoid tokens.
 
 Jādara pašam / do this yourself (cannot be done from here):
-[ ] GitHub -> repo -> Packages -> punktu_sistema -> Package settings ->
+[x] GitHub -> repo -> Packages -> punktu_sistema -> Package settings ->
     Change visibility -> Public. Until this is clicked, the NAS will get
     "denied / unauthorized" when it pulls the image.
+
+[x] i am unable to edit existing tasks or prizes, when i try to edit and save it says invalid value
+    - the form sent active back as the 0/1 a row carries; the server only took
+      a JSON boolean. Fixed both ends, and the api types now forbid the mistake.
+      Same bug also broke the Deactivate / Activate buttons.
+[x] when editing the points text box always stays at least 1, which is annoying if i want to add 5 points, I have to place cursor in between 1 and 5 just to delete 5
+    - the box now keeps what you type, may be empty, and Save stays disabled
+      until there is a number in it
+[x] add more generic icons in all of the categories — 12 -> 24 per group
+[x] add health / bathroom categories for icons

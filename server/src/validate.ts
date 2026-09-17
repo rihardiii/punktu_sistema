@@ -46,9 +46,17 @@ export function id(value: unknown, field: string): number {
   return int(value, field, { min: 1, max: Number.MAX_SAFE_INTEGER });
 }
 
+/**
+ * Booleans arrive in three shapes: a real `true`, the `0`/`1` that SQLite hands
+ * back to the client, and the `"true"`/`"false"` of a query string. All three
+ * mean the same thing, so accept all three rather than making every caller
+ * remember which one this particular column round-trips as.
+ */
 export function bool(value: unknown, fallback: boolean): boolean {
   if (typeof value === 'boolean') return value;
   if (value === undefined || value === null) return fallback;
+  if (value === 1 || value === '1' || value === 'true') return true;
+  if (value === 0 || value === '0' || value === 'false') return false;
   badRequest('invalid_field', 'boolean');
 }
 

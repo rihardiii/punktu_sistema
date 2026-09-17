@@ -16,20 +16,28 @@ import type { Deed, Reward } from '../types.ts';
 
 type Tab = 'deeds' | 'rewards';
 
-/** Blank row used when adding, so the same form handles create and edit. */
+/**
+ * Blank row used when adding, so the same form handles create and edit.
+ * `value` is the raw text of the points/cost box, not a number: a number would
+ * have to be clamped on every keystroke, which makes the box impossible to
+ * clear — you would have to type the new figure around the old one.
+ */
 const emptyDraft = {
   id: 0,
   title_lv: '',
   title_en: '',
   icon: '',
-  value: 10,
+  value: '10',
   category: '',
   description_lv: '',
   description_en: '',
-  active: 1,
+  active: true,
 };
 
 type Draft = typeof emptyDraft;
+
+/** The typed points/cost, or 0 while the box is empty or half-typed. */
+const draftValue = (draft: Draft) => Number(draft.value) || 0;
 
 export function ParentCatalog() {
   const { t, pick } = useI18n();
@@ -57,7 +65,7 @@ export function ParentCatalog() {
   }, [load]);
 
   const save = async () => {
-    if (!draft || !draft.title_lv.trim()) return;
+    if (!draft || !draft.title_lv.trim() || draftValue(draft) < 1) return;
     setBusy(true);
     try {
       if (tab === 'deeds') {
@@ -65,7 +73,7 @@ export function ParentCatalog() {
           title_lv: draft.title_lv.trim(),
           title_en: draft.title_en.trim(),
           icon: draft.icon,
-          points: draft.value,
+          points: draftValue(draft),
           category: draft.category.trim(),
           active: draft.active,
         };
@@ -77,7 +85,7 @@ export function ParentCatalog() {
           title_lv: draft.title_lv.trim(),
           title_en: draft.title_en.trim(),
           icon: draft.icon,
-          cost: draft.value,
+          cost: draftValue(draft),
           description_lv: draft.description_lv.trim(),
           description_en: draft.description_en.trim(),
           active: draft.active,
@@ -112,7 +120,7 @@ export function ParentCatalog() {
 
   const toggleActive = async (item: Deed | Reward) => {
     try {
-      const next = item.active === 1 ? 0 : 1;
+      const next = item.active !== 1;
       if (tab === 'deeds') await api.updateDeed(item.id, { active: next });
       else await api.updateReward(item.id, { active: next });
       await load();
@@ -143,9 +151,7 @@ export function ParentCatalog() {
       <Button
         variant="primary"
         block
-        onClick={() =>
-          setDraft({ ...emptyDraft, value: tab === 'deeds' ? 10 : 50 })
-        }
+        onClick={() => setDraft({ ...emptyDraft, value: tab === 'deeds' ? '10' : '50' })}
       >
         ＋ {tab === 'deeds' ? t('newDeed') : t('newReward')}
       </Button>
@@ -186,11 +192,11 @@ export function ParentCatalog() {
                         title_lv: row.title_lv,
                         title_en: row.title_en,
                         icon: row.icon,
-                        value: valueOf(row),
+                        value: String(valueOf(row)),
                         category: 'category' in row ? row.category : '',
                         description_lv: 'description_lv' in row ? row.description_lv : '',
                         description_en: 'description_en' in row ? row.description_en : '',
-                        active: row.active,
+                        active: row.active === 1,
                       })
                     }
                   >
@@ -235,7 +241,7 @@ export function ParentCatalog() {
               <Button
                 variant="primary"
                 busy={busy}
-                disabled={!draft.title_lv.trim() || draft.value < 1}
+                disabled={!draft.title_lv.trim() || draftValue(draft) < 1}
                 onClick={save}
               >
                 {t('save')}
@@ -260,14 +266,23 @@ export function ParentCatalog() {
             />
           </Field>
 
+          {/*
+            A text box rather than type="number": the box has to be allowed to
+            stand empty mid-edit, so you can clear "1" and type "5" instead of
+            threading the new figure around the old one. Digits are filtered
+            out on the way in, and Save stays disabled until there is a number.
+          */}
           <Field label={tab === 'deeds' ? t('pointValue') : t('costValue')}>
             <input
               className="input tnum"
-              type="number"
-              min={1}
+              type="text"
               value={draft.value}
-              onChange={(e) => setDraft({ ...draft, value: Math.max(1, Number(e.target.value) || 1) })}
+              onChange={(e) =>
+                setDraft({ ...draft, value: e.target.value.replace(/\D/g, '').slice(0, 7) })
+              }
               inputMode="numeric"
+              pattern="[0-9]*"
+              autoComplete="off"
             />
           </Field>
 

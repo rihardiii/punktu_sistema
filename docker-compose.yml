@@ -12,8 +12,8 @@ services:
     # elsewhere and reference it here instead.
     build: .
     # Semver, to match package.json and the tag CI publishes to GHCR. The app's
-    # own scheme (0.10) is what the UI shows; 0.10 -> 0.10.0 here.
-    image: punktu-sistema:0.10.0
+    # own scheme (0.11) is what the UI shows; 0.11 -> 0.11.0 here.
+    image: punktu-sistema:0.11.0
     restart: unless-stopped
 
     ports:

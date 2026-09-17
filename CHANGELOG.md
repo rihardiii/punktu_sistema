@@ -9,6 +9,51 @@ atkarībā no izmaiņas apjoma. `package.json` atspoguļo to semver formātā
 
 ---
 
+## [0.11] — 2026-09-17
+
+### Labots / Fixed
+
+- **Esošu darbu un balvu nevarēja rediģēt** — katrs **Saglabāt** atgrieza
+  "Nederīga vērtība". Rediģēšanas forma nosūtīja atpakaļ to `active` vērtību,
+  kādu tā bija saņēmusi no servera, un tas ir `0` vai `1` — tā SQLite glabā
+  patiesuma vērtības. Serveris savukārt pieņēma tikai īstu JSON `true`/`false`
+  un visu pārējo noraidīja kā nederīgu. Jaunu darbu izveide strādāja tikai
+  tāpēc, ka `POST` šo lauku nemaz nelasa.
+
+  Salabots abos galos: serveris tagad pieņem arī `0`/`1` un `"true"`/`"false"`
+  (tas pats lauks atgriežas trijos veidos atkarībā no tā, vai tas nāk no rindas,
+  no vaicājuma virknes vai no koda), un pārlūka puse sūta īstu patiesuma
+  vērtību. `api.ts` tipi tagad neļauj šo kļūdu atkārtot: `CatalogPatch`
+  pieprasa `active: boolean`, kamēr rindas tips `Deed`/`Reward` paliek ar `0`/`1`.
+
+  Tā pati kļūda klusi lauza arī **Deaktivizēt / Aktivizēt** pogas katalogā.
+
+- **Punktu lauks rediģēšanas logā vienmēr paturēja vismaz `1`.** Lauku nevarēja
+  iztukšot: katrs taustiņsitiens tika piespiests atpakaļ uz `≥ 1`, tāpēc, lai
+  no `1` iegūtu `5`, vajadzēja likt kursoru starp cipariem un dzēst veco.
+  Tagad lauks glabā ierakstīto tekstu, drīkst īslaicīgi būt tukšs, un
+  **Saglabāt** vienkārši paliek neaktīvs, līdz tur ir skaitlis. Ievadā tiek
+  ielaisti tikai cipari, tāpēc serveris joprojām saņem veselu skaitli.
+
+### Pievienots / Added
+
+- **Divas jaunas ikonu grupas:** **Vannasistaba** (duša, vanna, zobu suka,
+  veļa) un **Veselība** (zāles, plāksteris, zobs, sports, miegs). Līdz šim
+  "iztīrīt zobus" nebija ko izvēlēties, ja vien neuzskata ziepes par zobu suku.
+
+- **Divreiz vairāk ikonu katrā grupā** — no 12 uz 24. Papildinājums ir apzināti
+  vispārīgs (kaste, atslēga, pulkstenis, zvaigzne, sirds), jo pusei no darbiem,
+  ko ģimene izdomā pati, sava emocijzīme nemaz nepastāv, un tad der kaut kas
+  neitrāls, kas tomēr uzreiz salasāms.
+
+  Visas ikonas ir līdz 8 UTF-16 vienībām — tāda ir `icon` kolonnas robeža
+  serverī, un garākas ZWJ virknes (piemēram, četru cilvēku ģimene) to pārsniedz.
+
+- **Kataloga rediģēšanas pārbaudes `server/test/smoke.sh`** — tostarp `active`
+  kā `0`, kā `1` un kā muļķības, lai šī kļūda nevarētu atgriezties nepamanīta.
+
+---
+
 ## [0.10] — 2026-09-16
 
 ### Pievienots / Added

@@ -42,7 +42,7 @@ npm start
 Serveris parādīs adreses, kuras atvērt pārlūkā:
 
 ```
-  Punktu sistēma v0.10
+  Punktu sistēma v0.11
   Datubāze / database: C:\...\punktu_sistema\data\punkti.sqlite
   Lokāli / local:      http://localhost:4173
   Tīklā / on the LAN:  http://192.168.1.132:4173

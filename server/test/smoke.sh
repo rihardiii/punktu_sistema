@@ -105,6 +105,31 @@ check "cannot request unaffordable reward" \
   "$(api "$K_JAR" POST /api/redemptions "{\"rewardId\":$EXP}" | j "['error']")" \
   "insufficient_points"
 
+echo "== catalog editing =="
+ED=$(api "$P_JAR" POST /api/catalog/deeds '{"title_lv":"Slaucit putekljus","points":7}' | j "['deed']['id']")
+check "editing a deed saves the new title" \
+  "$(api "$P_JAR" PATCH "/api/catalog/deeds/$ED" '{"title_lv":"Slaucit gridu","points":9,"active":true}' | j "['deed']['title_lv']")" \
+  "Slaucit gridu"
+check "the new points stuck" \
+  "$(api "$P_JAR" GET '/api/catalog/deeds?all=true' | jx "[x['points'] for x in d['deeds'] if x['id']==$ED][0]")" "9"
+# The edit form sends back the 0/1 a row carries, not a JSON boolean. Rejecting
+# that as an invalid value is what made every save fail in 0.10.
+check "active accepts the 0/1 a row carries" \
+  "$(api "$P_JAR" PATCH "/api/catalog/deeds/$ED" '{"title_lv":"Slaucit gridu","active":0}' | j "['deed']['active']")" "0"
+check "and 1 switches it back on" \
+  "$(api "$P_JAR" PATCH "/api/catalog/deeds/$ED" '{"title_lv":"Slaucit gridu","active":1}' | j "['deed']['active']")" "1"
+check "nonsense in active is still a 400" \
+  "$(api "$P_JAR" PATCH "/api/catalog/deeds/$ED" '{"active":"varbut"}' | j "['error']")" "invalid_field"
+
+ER=$(api "$P_JAR" POST /api/catalog/rewards '{"title_lv":"Kino vakars","cost":120}' | j "['reward']['id']")
+check "editing a reward saves the new cost" \
+  "$(api "$P_JAR" PATCH "/api/catalog/rewards/$ER" '{"title_lv":"Kino vakars","cost":150,"active":1}' | j "['reward']['cost']")" \
+  "150"
+check "a kid cannot edit the catalog" \
+  "$(api "$K_JAR" PATCH "/api/catalog/deeds/$ED" '{"points":9999}' | j "['error']")" "parent_only"
+api "$P_JAR" DELETE "/api/catalog/deeds/$ED" > /dev/null
+api "$P_JAR" DELETE "/api/catalog/rewards/$ER" > /dev/null
+
 echo "== privacy between siblings =="
 KID2=$(api "$P_JAR" POST /api/users '{"name":"Bruno","username":"bruno","pin":"2222","role":"kid"}' | j "['user']['id']")
 check "kid cannot read sibling balance" \

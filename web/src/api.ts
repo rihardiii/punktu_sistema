@@ -11,6 +11,14 @@ import type {
   User,
 } from './types.ts';
 
+/**
+ * The body of a catalog write. A row carries `active` as the 0/1 SQLite stores,
+ * but the server wants a real boolean on the way back in, so the patch type
+ * swaps it — otherwise `Partial<Deed>` happily typechecks a `1` the server
+ * rejects as an invalid value.
+ */
+type CatalogPatch<T> = Partial<Omit<T, 'id' | 'active'> & { active: boolean }>;
+
 /** An API error carrying the server's machine-readable code for translation. */
 export class ApiError extends Error {
   status: number;
@@ -92,14 +100,15 @@ export const api = {
 
   // --- catalog ---
   deeds: (all = false) => get<{ deeds: Deed[] }>(`/catalog/deeds${all ? '?all=true' : ''}`),
-  createDeed: (body: Partial<Deed>) => send<{ deed: Deed }>('POST', '/catalog/deeds', body),
-  updateDeed: (id: number, body: Partial<Deed>) =>
+  createDeed: (body: CatalogPatch<Deed>) => send<{ deed: Deed }>('POST', '/catalog/deeds', body),
+  updateDeed: (id: number, body: CatalogPatch<Deed>) =>
     send<{ deed: Deed }>('PATCH', `/catalog/deeds/${id}`, body),
   deleteDeed: (id: number) => send<{ ok: true }>('DELETE', `/catalog/deeds/${id}`),
 
   rewards: (all = false) => get<{ rewards: Reward[] }>(`/catalog/rewards${all ? '?all=true' : ''}`),
-  createReward: (body: Partial<Reward>) => send<{ reward: Reward }>('POST', '/catalog/rewards', body),
-  updateReward: (id: number, body: Partial<Reward>) =>
+  createReward: (body: CatalogPatch<Reward>) =>
+    send<{ reward: Reward }>('POST', '/catalog/rewards', body),
+  updateReward: (id: number, body: CatalogPatch<Reward>) =>
     send<{ reward: Reward }>('PATCH', `/catalog/rewards/${id}`, body),
   deleteReward: (id: number) => send<{ ok: true }>('DELETE', `/catalog/rewards/${id}`),
 
