@@ -118,3 +118,14 @@ so i can open the web page on localhost and test the new features after which i 
       `npm install` points git at it via the "prepare" script. One-time
       manual equivalent: git config core.hooksPath .githooks
     - the UI shows 0.12.1 for a patch build and plain 0.13 for a release.
+[x] about section that shows version shows only 0.12 instead of 0.12.1 as it should
+    - cause: the web bundle baked the version in at build time, but every
+      commit bumps it, so the number went stale the moment it was built and
+      stayed stale until the next npm run build. A cached service-worker
+      bundle could show it for longer still.
+    - fix: the About screen now asks the server (/api/health), which reads the
+      manifest at startup. /api is never cached, so it cannot go stale.
+      Verified by bumping to 0.12.9 without rebuilding: the screen followed.
+    - bonus: the 0.12.0 -> 0.12 conversion now exists in one place only
+      (server/src/version.ts); the vite define and web/src/version.ts are gone.
+    - if the server is unreachable the screen shows a dash, not an old number.

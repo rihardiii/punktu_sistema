@@ -87,15 +87,32 @@ atkarībā no izmaiņas apjoma. `package.json` atspoguļo to semver formātā
   CHANGELOG), un tās klusi izgāja no soļa: šī paša faila 0.11 ierakstā ir
   atsevišķs punkts par "Version mismatch in the compose file".
 
-  Tagad serveris nolasa manifestu startējot, un Vite iešuj versiju pārlūka
-  paketē būvējot. `server/package.json` un `web/package.json` savu versiju
-  vairs nenes nemaz — tās ir privātas darbvietas, un neviens to nelasīja.
-  `docker-compose.yml` vairs nesatur versiju: tas būvē attēlu lokāli, un tagu
-  ar versiju uzliek CI.
+  Tagad serveris nolasa manifestu startējot, bet ekrāns *Par lietotni* to prasa
+  serverim (`/api/health`). `server/package.json` un `web/package.json` savu
+  versiju vairs nenes nemaz — tās ir privātas darbvietas, un neviens to
+  nelasīja. `docker-compose.yml` vairs nesatur versiju: tas būvē attēlu lokāli,
+  un tagu ar versiju uzliek CI.
 
-  Pārveidi `0.12.0` → `0.12` (un `0.9.0` → `0.09`) dara abas puses katra pati,
-  tāpēc `web/test/ui.mjs` pārbauda, ka ekrāns un `/api/health` atbild vienu un
-  to pašu, bet `smoke.sh` — ka tas sakrīt ar `package.json`.
+  Pārveide `0.12.0` → `0.12` (un `0.9.0` → `0.09`) tāpēc pastāv tikai vienā
+  vietā — `server/src/version.ts`. `smoke.sh` pārbauda, ka `/api/health` sakrīt
+  ar `package.json`, un `ui.mjs` — ka ekrāns rāda to, ko serveris.
+
+- **Pēdējo ciparu paceļ pats git** (`.githooks/pre-commit`): katrs commit uzliek
+  `0.12.1`, `0.12.2` un tā tālāk, lai vienmēr var pateikt, tieši kuru būvējumu
+  NAS darbina. Jaunam laidienam vidējo ciparu nomaina ar roku, un āķis to
+  neaiztiek. Merge, rebase un cherry-pick versiju neceļ.
+
+### Labots / Fixed
+
+- **Ekrāns *Par lietotni* rādīja `0.12`, kad lietotne jau bija `0.12.1`.**
+  Versija paketē tika iešūta būvējot, bet to paceļ katrs commit — tāpēc
+  skaitlis novecoja tajā pašā mirklī un palika tāds līdz nākamajai
+  pārbūvēšanai. Turklāt noglabāta (service worker) pakete to varēja rādīt vēl
+  ilgāk.
+
+  Tagad ekrāns to prasa serverim, kurš manifestu nolasa startējot, un `/api`
+  netiek kešots nekad. Ja serveris nav sasniedzams, tiek parādīta domuzīme,
+  nevis novecojis skaitlis.
 
 ### Labots / Fixed
 

@@ -154,27 +154,33 @@ check(
   1,
 );
 
-console.log('== the app and the server agree on the version ==');
+console.log('== the about screen asks the server for the version ==');
 /*
- * The version is written in one place, the root package.json, but it reaches
- * the screen and the API by different routes: Vite inlines it at build time,
- * the server reads the manifest at startup. Each applies its own copy of the
- * 0.12.0 -> 0.12 conversion, so this is the check that stops those two copies
- * from drifting apart unnoticed.
+ * It used to be inlined at build time, which went stale the moment the next
+ * commit bumped the patch — the screen said 0.12 while the server was already
+ * running 0.12.1. It is fetched now, so this checks that the fetch actually
+ * lands: a dash means it failed, and a number that disagrees with the server
+ * would mean something is caching /api that must never be cached.
  */
 await page.locator('.tab', { hasText: 'Iestatījumi' }).click();
-await page.waitForTimeout(700);
-const shownVersion = await page
-  .locator('.row-between', { hasText: 'Versija' })
-  .locator('.tnum')
-  .innerText();
+const versionCell = page.locator('.row-between', { hasText: 'Versija' }).locator('.tnum');
+await versionCell.waitFor();
+// The dash is the "could not reach the server" placeholder; wait it out.
+await page
+  .waitForFunction(
+    () =>
+      !(document.body.innerText.includes('Versija') && /Versija\s*\n?\s*—/.test(document.body.innerText)),
+    { timeout: 5000 },
+  )
+  .catch(() => undefined);
+const shownVersion = (await versionCell.innerText()).trim();
 const healthVersion = await page.evaluate(() =>
   fetch('/api/health')
     .then((r) => r.json())
     .then((d) => d.version),
 );
-check('the screen shows a version at all', /^\d+\.\d+/.test(shownVersion.trim()), true);
-check('and it is the one the server reports', shownVersion.trim(), healthVersion);
+check('the about screen shows a real version', /^\d+\.\d+/.test(shownVersion), true);
+check('and it is the one the server reports', shownVersion, healthVersion);
 
 console.log('== an open request badges its tab ==');
 // Anna's forgotten PIN is still waiting, and badges are the only notification

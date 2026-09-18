@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api, ApiError } from '../api.ts';
 import { useAuth } from '../auth.tsx';
 import { useErrorText, useI18n, type Lang } from '../i18n.tsx';
 import { ACCENTS, useTheme, type ThemeMode } from '../theme.tsx';
 import { Avatar, Button, Card, Field, Modal, Segmented, useToast } from '../components/ui.tsx';
-import { APP_VERSION } from '../version.ts';
 
 export function Settings() {
   const { t, lang, setLang } = useI18n();
@@ -12,6 +11,27 @@ export function Settings() {
   const { user, logout } = useAuth();
   const toast = useToast();
   const errorText = useErrorText();
+
+  /*
+   * Versija tiek prasīta serverim, nevis iešūta šajā paketē. Katrs commit to
+   * paceļ, serveris to nolasa startējot, bet pakete mainītos tikai pēc
+   * pārbūvēšanas — tāpēc šis ekrāns rādīja 0.12, kad īstenībā jau bija 0.12.1.
+   * Tas arī nozīmē, ka noglabāta (service worker) pakete nevar rādīt vecu
+   * skaitli: `/api` netiek kešots nekad.
+   */
+  const [version, setVersion] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .health()
+      .then((health) => {
+        if (!cancelled) setVersion(health.version);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const [changing, setChanging] = useState(false);
   const [currentPin, setCurrentPin] = useState('');
@@ -123,7 +143,8 @@ export function Settings() {
         <div className="row-between">
           <span className="muted">{t('version')}</span>
           <span className="tnum" style={{ fontWeight: 800 }}>
-            {APP_VERSION}
+            {/* Dash, not a stale number, when the server cannot be reached. */}
+            {version ?? '—'}
           </span>
         </div>
       </Card>

@@ -70,6 +70,14 @@ const send = <T,>(method: string, path: string, body?: unknown) =>
   request<T>(path, { method, body: body === undefined ? undefined : JSON.stringify(body) });
 
 export const api = {
+  /**
+   * Servera versija. Tā tiek prasīta serverim, nevis iešūta paketē būvējot:
+   * versiju paceļ katrs commit, un iešūts skaitlis novecotu līdz nākamajai
+   * būvēšanai — tāpēc ekrāns "Par lietotni" rādīja 0.12, kad īstenībā jau bija
+   * 0.12.1. `/api` netiek kešots, tāpēc šis atbild vienmēr patiesi.
+   */
+  health: () => get<{ ok: boolean; version: string }>('/health'),
+
   // --- auth ---
   setupStatus: () => get<{ needsSetup: boolean }>('/auth/setup/status'),
   setup: (body: { name: string; username: string; pin: string }) =>

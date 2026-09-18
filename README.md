@@ -475,7 +475,7 @@ Viss pārējais to nolasa no turienes:
 | Kur | Kā |
 | --- | --- |
 | Servera baneris un `/api/health` | [`server/src/version.ts`](server/src/version.ts) nolasa manifestu, startējot |
-| Ekrāns *Par lietotni* | Vite to iešuj būvējot ([`web/vite.config.ts`](web/vite.config.ts)) |
+| Ekrāns *Par lietotni* | prasa serverim `/api/health`, tāpēc nekad nenovecot |
 | Docker attēla tags GHCR | CI nolasa `package.json` ([`ci.yml`](.github/workflows/ci.yml)) |
 
 Atliek vēl pievienot jaunu virsrakstu `CHANGELOG.md` — tas ir žurnāls, nevis
