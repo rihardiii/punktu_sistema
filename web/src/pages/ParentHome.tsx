@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError } from '../api.ts';
 import { useErrorText, useI18n } from '../i18n.tsx';
+import { usePoll } from '../live.tsx';
 import {
   Avatar,
   Button,
@@ -27,12 +28,16 @@ export function ParentHome() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    setOverview(await api.overview());
+    try {
+      setOverview(await api.overview());
+    } catch {
+      // Only the first failure needs a stand-in; a later one leaves the numbers
+      // already on screen alone rather than blanking them.
+      setOverview((current) => current ?? { pendingSubmissions: 0, pendingRedemptions: 0, kids: [] });
+    }
   }, []);
 
-  useEffect(() => {
-    void load().catch(() => setOverview({ pendingSubmissions: 0, pendingRedemptions: 0, kids: [] }));
-  }, [load]);
+  usePoll(load);
 
   const applyAdjustment = async () => {
     if (!adjusting) return;

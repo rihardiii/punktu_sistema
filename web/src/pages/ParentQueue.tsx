@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { api, ApiError } from '../api.ts';
 import { useErrorText, useI18n } from '../i18n.tsx';
+import { usePoll, useLive } from '../live.tsx';
 import {
   Avatar,
   Button,
@@ -27,6 +28,7 @@ export function ParentQueue() {
   const toast = useToast();
   const errorText = useErrorText();
   const formatDate = useFormatDate();
+  const { refresh } = useLive();
 
   const [items, setItems] = useState<Pending[] | null>(null);
   const [rejecting, setRejecting] = useState<Pending | null>(null);
@@ -34,21 +36,25 @@ export function ParentQueue() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [subs, reds] = await Promise.all([
-      api.submissions({ status: 'pending' }),
-      api.redemptions({ status: 'pending' }),
-    ]);
-    const merged: Pending[] = [
-      ...subs.submissions.map((row) => ({ kind: 'deed' as const, row })),
-      ...reds.redemptions.map((row) => ({ kind: 'reward' as const, row })),
-    ];
-    merged.sort((a, b) => a.row.created_at.localeCompare(b.row.created_at));
-    setItems(merged);
+    try {
+      const [subs, reds] = await Promise.all([
+        api.submissions({ status: 'pending' }),
+        api.redemptions({ status: 'pending' }),
+      ]);
+      const merged: Pending[] = [
+        ...subs.submissions.map((row) => ({ kind: 'deed' as const, row })),
+        ...reds.redemptions.map((row) => ({ kind: 'reward' as const, row })),
+      ];
+      merged.sort((a, b) => a.row.created_at.localeCompare(b.row.created_at));
+      setItems(merged);
+    } catch {
+      setItems((current) => current ?? []);
+    }
   }, []);
 
-  useEffect(() => {
-    void load().catch(() => setItems([]));
-  }, [load]);
+  // The queue is the screen most likely to be sitting open on a kitchen tablet
+  // while a kid files something in the next room.
+  usePoll(load);
 
   const decide = async (item: Pending, decision: 'approve' | 'reject', note = '') => {
     const key = `${item.kind}-${item.row.id}`;
@@ -63,6 +69,9 @@ export function ParentQueue() {
       toast.show(errorText(err instanceof ApiError ? err.code : 'server_error'), 'bad');
       await load();
     } finally {
+      // The tab badge counts exactly what this screen just changed, so it
+      // should not lag a decision by up to a poll interval.
+      refresh();
       setBusyId(null);
       setRejecting(null);
       setRejectNote('');

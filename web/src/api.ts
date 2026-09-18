@@ -3,6 +3,7 @@ import type {
   Deed,
   Face,
   LedgerEntry,
+  Notifications,
   Overview,
   PinRequest,
   Redemption,
@@ -16,8 +17,13 @@ import type {
  * but the server wants a real boolean on the way back in, so the patch type
  * swaps it — otherwise `Partial<Deed>` happily typechecks a `1` the server
  * rejects as an invalid value.
+ *
+ * `done_today` and `locked` are dropped for the same reason in reverse: the
+ * server computes them and stores neither, so sending them back is meaningless.
  */
-type CatalogPatch<T> = Partial<Omit<T, 'id' | 'active'> & { active: boolean }>;
+type CatalogPatch<T> = Partial<
+  Omit<T, 'id' | 'active' | 'done_today' | 'locked'> & { active: boolean }
+>;
 
 /** An API error carrying the server's machine-readable code for translation. */
 export class ApiError extends Error {
@@ -144,4 +150,8 @@ export const api = {
   adjust: (kidId: number, delta: number, reason: string) =>
     send<{ balance: number }>('POST', '/points/adjust', { kidId, delta, reason }),
   overview: () => get<Overview>('/points/overview'),
+
+  // --- notifications ---
+  /** Polled by the live layer: badge counts for a parent, answers for a kid. */
+  notifications: () => get<Notifications>('/notifications'),
 };

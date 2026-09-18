@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../api.ts';
 import { useAuth } from '../auth.tsx';
 import { useErrorText, useI18n } from '../i18n.tsx';
+import { usePoll, useSeen } from '../live.tsx';
+import { windowsLabel } from '../time.ts';
 import {
   Button,
   Card,
@@ -22,6 +24,9 @@ export function KidHome() {
   const toast = useToast();
   const errorText = useErrorText();
   const formatDate = useFormatDate();
+  // This is the screen that shows what a parent decided about a deed, so being
+  // here is what "seen" means — the badge on the tab clears.
+  useSeen('deed');
 
   const [balance, setBalance] = useState<Balance | null>(null);
   const [deeds, setDeeds] = useState<Deed[]>([]);
@@ -35,16 +40,19 @@ export function KidHome() {
   const kidId = user!.id;
 
   const load = useCallback(async () => {
-    const [b, d, s] = await Promise.all([api.balance(kidId), api.deeds(), api.submissions()]);
-    setBalance(b);
-    setDeeds(d.deeds);
-    setMine(s.submissions);
-    setLoading(false);
+    try {
+      const [b, d, s] = await Promise.all([api.balance(kidId), api.deeds(), api.submissions()]);
+      setBalance(b);
+      setDeeds(d.deeds);
+      setMine(s.submissions);
+    } finally {
+      setLoading(false);
+    }
   }, [kidId]);
 
-  useEffect(() => {
-    void load().catch(() => setLoading(false));
-  }, [load]);
+  // Polled, so a parent's decision — and a deed's time window opening — reach
+  // the kid's screen on their own.
+  usePoll(load);
 
   // A previously-pending deed that is now approved means a parent said yes
   // while the kid was looking at the screen — worth a celebration.
@@ -90,6 +98,22 @@ export function KidHome() {
 
   const recent = mine.slice(0, 8);
 
+  /** The small line under a tile: when the deed is open, and how many are left. */
+  const ruleNote = (deed: Deed): string => {
+    if (deed.locked === 'limit') return `✅ ${t('doneForToday')}`;
+    const parts: string[] = [];
+    if (deed.windows.length > 0) parts.push(`🕒 ${windowsLabel(deed.windows)}`);
+    if (deed.max_per_day > 0) parts.push(`${deed.done_today}/${deed.max_per_day} ${t('todayShort')}`);
+    return parts.join(' · ');
+  };
+
+  /** Spelled out in full for anyone who hovers or holds the tile. */
+  const lockHint = (deed: Deed): string | undefined => {
+    if (deed.locked === 'limit') return t('doneForToday');
+    if (deed.locked === 'window') return t('availableAt', { times: windowsLabel(deed.windows) });
+    return undefined;
+  };
+
   return (
     <div className="page">
       {celebrate && <Confetti onDone={() => setCelebrate(false)} />}
@@ -120,11 +144,28 @@ export function KidHome() {
         ) : (
           <div className="tile-grid">
             {deeds.map((deed) => (
-              <button key={deed.id} className="tile" onClick={() => setChosen(deed)}>
+              <button
+                key={deed.id}
+                className="tile"
+                disabled={deed.locked !== ''}
+                onClick={() => setChosen(deed)}
+                title={lockHint(deed)}
+              >
+                {deed.locked !== '' && (
+                  <span className="tile-lock" aria-hidden>
+                    {deed.locked === 'limit' ? '✅' : '🕒'}
+                  </span>
+                )}
                 <span className="tile-icon" aria-hidden>
                   {deed.icon || '⭐'}
                 </span>
                 <span className="tile-title">{pick(deed)}</span>
+                {/*
+                  A locked tile has to say why, or it just looks broken. An open
+                  one still shows its rule, so the limit is never a surprise the
+                  first time it bites.
+                */}
+                {ruleNote(deed) && <span className="tile-note">{ruleNote(deed)}</span>}
                 <span className="tile-points tnum">
                   +{deed.points} {t('pointsShort')}
                 </span>

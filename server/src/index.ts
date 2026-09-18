@@ -14,6 +14,7 @@ import { catalogRouter } from './routes/catalog.ts';
 import { submissionsRouter } from './routes/submissions.ts';
 import { redemptionsRouter } from './routes/redemptions.ts';
 import { pointsRouter } from './routes/points.ts';
+import { notificationsRouter } from './routes/notifications.ts';
 import { version } from './version.ts';
 
 const PORT = Number(process.env.PORT ?? 4173);
@@ -66,6 +67,7 @@ app.use('/api/catalog', catalogRouter);
 app.use('/api/submissions', submissionsRouter);
 app.use('/api/redemptions', redemptionsRouter);
 app.use('/api/points', pointsRouter);
+app.use('/api/notifications', notificationsRouter);
 
 app.use('/api', (_req, res) => res.status(404).json({ error: 'not_found' }));
 

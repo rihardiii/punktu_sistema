@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { api, ApiError } from '../api.ts';
 import { useAuth } from '../auth.tsx';
 import { useErrorText, useI18n } from '../i18n.tsx';
+import { usePoll } from '../live.tsx';
 import {
   Avatar,
   Button,
@@ -54,17 +55,21 @@ export function ParentFamily() {
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
-    const [{ users: list }, { requests: open }] = await Promise.all([
-      api.users(),
-      api.pinRequests(),
-    ]);
-    setUsers(list);
-    setRequests(open);
+    try {
+      const [{ users: list }, { requests: open }] = await Promise.all([
+        api.users(),
+        api.pinRequests(),
+      ]);
+      setUsers(list);
+      setRequests(open);
+    } catch {
+      setUsers((current) => current ?? []);
+    }
   }, []);
 
-  useEffect(() => {
-    void load().catch(() => setUsers([]));
-  }, [load]);
+  // A forgotten PIN filed from the login screen shows up here on its own —
+  // which matters, because the person waiting cannot get in to chase it.
+  usePoll(load);
 
   const save = async () => {
     if (!draft) return;

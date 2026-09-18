@@ -1,6 +1,6 @@
 {
   "name": "punktu-sistema",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "Ģimenes punktu sistēma — self-hosted points tracker for kids' good deeds",
   "private": true,
   "type": "module",

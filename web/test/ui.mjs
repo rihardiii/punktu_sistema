@@ -154,6 +154,83 @@ check(
   1,
 );
 
+console.log('== an open request badges its tab ==');
+// Anna's forgotten PIN is still waiting, and badges are the only notification
+// this app has — over plain HTTP on a LAN the browser's push APIs do nothing.
+check(
+  'the family tab carries the count',
+  await page.locator('.tab', { hasText: 'Ģimene' }).locator('.tab-dot').innerText(),
+  '1',
+);
+
+console.log('== the deeds/rewards toggle is not crowded off the line ==');
+await page.locator('.tab', { hasText: 'Darbi' }).click();
+await page.waitForTimeout(800);
+const headBox = await page.locator('.page-head').boundingBox();
+const titleBox = await page.locator('.page-head h1').boundingBox();
+const toggleBox = await page.locator('.page-head .segmented').boundingBox();
+// In Latvian "Labo darbu saraksts" leaves no room beside it, so on a phone the
+// toggle takes a full row of its own rather than half-wrapping under the title.
+check('the toggle fills its own row', Math.abs(toggleBox.width - headBox.width) < 2, true);
+check('and sits below the heading', toggleBox.y >= titleBox.y + titleBox.height - 1, true);
+
+console.log('== a deed remembers both of its time windows ==');
+await page.locator('.item', { hasText: 'Iztīrīt zobus' }).getByRole('button', { name: /Labot/ }).click();
+await page.waitForTimeout(500);
+// Morning and evening: two windows, so four time boxes.
+check('four time boxes for two windows', await page.locator('.modal input[type=time]').count(), 4);
+check(
+  'the times are the ones stored',
+  (await page.locator('.modal input[type=time]').evaluateAll((els) => els.map((e) => e.value))).join(),
+  '06:00,10:00,19:00,22:30',
+);
+await page.keyboard.press('Escape');
+await page.waitForTimeout(300);
+
+console.log('== out of hours a deed is locked on the kid screen ==');
+/*
+ * The seeded deeds are open at real times of day, so a test run at 08:00 would
+ * see something different from one at 23:00. This deed is given a window that
+ * certainly is not now, built from the current clock and kept inside the day so
+ * it never wraps past midnight.
+ */
+const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+const shutWindow =
+  nowMinutes >= 720 ? [{ start_min: 0, end_min: 60 }] : [{ start_min: 1380, end_min: 1439 }];
+await page.evaluate(
+  (windows) =>
+    fetch('/api/catalog/deeds', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title_lv: 'Slēgts darbs', points: 5, windows, max_per_day: 1 }),
+    }),
+  shutWindow,
+);
+
+await page.locator('.tab', { hasText: 'Iestatījumi' }).click();
+await page.waitForTimeout(500);
+await page.getByRole('button', { name: /Iziet/ }).click();
+await page.waitForTimeout(900);
+await page.locator('.face', { hasText: 'Anna' }).click();
+await page.waitForTimeout(400);
+for (const digit of '1111') {
+  await page.locator('.pin-key', { hasText: digit }).first().click();
+  await page.waitForTimeout(80);
+}
+await page.getByRole('button', { name: 'Ieiet' }).click();
+await page.waitForTimeout(1500);
+// Logging out from Settings leaves the app on that route, so go home first.
+await page.locator('.tab', { hasText: 'Sākums' }).click();
+await page.waitForTimeout(1000);
+
+const shutTile = page.locator('.tile', { hasText: 'Slēgts darbs' });
+check('the out-of-hours tile is disabled', await shutTile.isDisabled(), true);
+check('and says when it opens', (await shutTile.innerText()).includes('🕒'), true);
+// Tapping it must do nothing at all — no dialog to submit from.
+await shutTile.click({ force: true }).catch(() => {});
+await page.waitForTimeout(400);
+check('tapping a locked tile opens nothing', await page.locator('.modal').count(), 0);
+
 console.log('\nconsole errors:', consoleErrors.length ? consoleErrors.join('; ') : 'none');
 if (consoleErrors.length) failed = 1;
 

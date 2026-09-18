@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import {
   BrowserRouter,
   Navigate,
@@ -7,9 +6,9 @@ import {
   Routes,
   useParams,
 } from 'react-router-dom';
-import { api } from './api.ts';
 import { AuthProvider, useAuth } from './auth.tsx';
 import { I18nProvider, useI18n } from './i18n.tsx';
+import { LiveProvider, useLive } from './live.tsx';
 import { ThemeProvider } from './theme.tsx';
 import { Avatar, LoadingScreen, ToastProvider } from './components/ui.tsx';
 import { Setup } from './pages/Setup.tsx';
@@ -31,43 +30,33 @@ function KidHistoryRoute() {
   return <History kidId={Number(id)} />;
 }
 
+/**
+ * Badges are the app's notifications: a parent sees what is waiting for them,
+ * a kid sees that a request has been answered. Both come from the one poll in
+ * LiveProvider, so every tab agrees and the server is asked once.
+ */
 function TabBar() {
   const { t } = useI18n();
   const { user } = useAuth();
-  const [waiting, setWaiting] = useState(0);
-
-  // Poll the pending count so a parent sees a new request without a refresh.
-  // 20s is frequent enough for a family app and costs almost nothing on a LAN.
-  useEffect(() => {
-    if (user?.role !== 'parent') return;
-    let cancelled = false;
-    const tick = () =>
-      api
-        .overview()
-        .then((o) => {
-          if (!cancelled) setWaiting(o.pendingSubmissions + o.pendingRedemptions);
-        })
-        .catch(() => undefined);
-    void tick();
-    const timer = setInterval(tick, 20_000);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [user?.role]);
+  const { notifications, unseen } = useLive();
 
   const tabs =
     user?.role === 'parent'
       ? [
           { to: '/', icon: '🏠', label: t('parentHome'), badge: 0 },
-          { to: '/queue', icon: '📋', label: t('navQueue'), badge: waiting },
+          {
+            to: '/queue',
+            icon: '📋',
+            label: t('navQueue'),
+            badge: notifications.pendingSubmissions + notifications.pendingRedemptions,
+          },
           { to: '/catalog', icon: '⭐', label: t('navDeeds'), badge: 0 },
-          { to: '/family', icon: '👨‍👩‍👧', label: t('navFamily'), badge: 0 },
+          { to: '/family', icon: '👨‍👩‍👧', label: t('navFamily'), badge: notifications.pinRequests },
           { to: '/settings', icon: '⚙️', label: t('navSettings'), badge: 0 },
         ]
       : [
-          { to: '/', icon: '🏠', label: t('navHome'), badge: 0 },
-          { to: '/shop', icon: '🎁', label: t('navShop'), badge: 0 },
+          { to: '/', icon: '🏠', label: t('navHome'), badge: unseen.deed },
+          { to: '/shop', icon: '🎁', label: t('navShop'), badge: unseen.reward },
           { to: '/history', icon: '📖', label: t('navHistory'), badge: 0 },
           { to: '/settings', icon: '⚙️', label: t('navSettings'), badge: 0 },
         ];
@@ -118,29 +107,31 @@ function AuthedApp() {
   const isParent = user!.role === 'parent';
 
   return (
-    <div className="app-shell">
-      <TopBar />
-      <Routes>
-        {isParent ? (
-          <>
-            <Route path="/" element={<ParentHome />} />
-            <Route path="/queue" element={<ParentQueue />} />
-            <Route path="/catalog" element={<ParentCatalog />} />
-            <Route path="/family" element={<ParentFamily />} />
-            <Route path="/kid/:id" element={<KidHistoryRoute />} />
-          </>
-        ) : (
-          <>
-            <Route path="/" element={<KidHome />} />
-            <Route path="/shop" element={<KidShop />} />
-            <Route path="/history" element={<History />} />
-          </>
-        )}
-        <Route path="/settings" element={<Settings />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-      <TabBar />
-    </div>
+    <LiveProvider>
+      <div className="app-shell">
+        <TopBar />
+        <Routes>
+          {isParent ? (
+            <>
+              <Route path="/" element={<ParentHome />} />
+              <Route path="/queue" element={<ParentQueue />} />
+              <Route path="/catalog" element={<ParentCatalog />} />
+              <Route path="/family" element={<ParentFamily />} />
+              <Route path="/kid/:id" element={<KidHistoryRoute />} />
+            </>
+          ) : (
+            <>
+              <Route path="/" element={<KidHome />} />
+              <Route path="/shop" element={<KidShop />} />
+              <Route path="/history" element={<History />} />
+            </>
+          )}
+          <Route path="/settings" element={<Settings />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+        <TabBar />
+      </div>
+    </LiveProvider>
   );
 }
 

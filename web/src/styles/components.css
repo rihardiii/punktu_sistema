@@ -20,6 +20,46 @@
   width: min(460px, 100%);
 }
 
+/*
+ * A page heading with a control beside it. The heading's length is the whole
+ * problem: "Labo darbu saraksts" is half again as long as "Good deeds", so at
+ * phone widths in Latvian the control could not fit and dropped to a ragged
+ * second row. Below 560px it now always takes a full-width row of its own,
+ * which looks deliberate in either language; above that, both sit on one line.
+ */
+.page-head {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s3);
+}
+
+.page-head .segmented {
+  display: flex;
+  width: 100%;
+}
+
+.page-head .segmented button {
+  flex: 1;
+}
+
+@media (min-width: 560px) {
+  .page-head {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .page-head .segmented {
+    display: inline-flex;
+    width: auto;
+  }
+
+  .page-head .segmented button {
+    flex: none;
+  }
+}
+
 .topbar {
   position: sticky;
   top: 0;
@@ -300,6 +340,14 @@
   font-size: 0.9rem;
   font-weight: 800;
   line-height: 1.25;
+}
+
+/* When a deed is open, and how many are left today — small, under the title. */
+.tile-note {
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text-3);
 }
 
 .tile-points {

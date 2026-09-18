@@ -130,6 +130,81 @@ check "a kid cannot edit the catalog" \
 api "$P_JAR" DELETE "/api/catalog/deeds/$ED" > /dev/null
 api "$P_JAR" DELETE "/api/catalog/rewards/$ER" > /dev/null
 
+echo "== time windows =="
+# Windows are wall-clock times, so the test has to build them around whatever
+# hour it is run at: one slot spanning now, and one that certainly is not now.
+# Both stay inside the day, so neither wraps past midnight.
+eval "$(python - <<'PY'
+from datetime import datetime
+m = datetime.now().hour * 60 + datetime.now().minute
+shut = (0, 60) if m >= 720 else (1380, 1439)
+print(f"""OPEN_W='[{{"start_min":{max(0, m - 60)},"end_min":{min(1439, m + 60)}}}]'""")
+print(f"""SHUT_W='[{{"start_min":{shut[0]},"end_min":{shut[1]}}}]'""")
+PY
+)"
+
+WD=$(api "$P_JAR" POST /api/catalog/deeds \
+  "{\"title_lv\":\"Tirit zobus\",\"points\":5,\"windows\":$SHUT_W}" | j "['deed']['id']")
+check "a window is stored with the deed" \
+  "$(api "$P_JAR" GET '/api/catalog/deeds?all=true' | jx "len([x for x in d['deeds'] if x['id']==$WD][0]['windows'])")" "1"
+check "out of hours the tile is locked" \
+  "$(api "$K_JAR" GET /api/catalog/deeds | jx "[x['locked'] for x in d['deeds'] if x['id']==$WD][0]")" "window"
+# The lock is a server rule, not just a greyed-out button: a stale page or a
+# second phone must not be able to file it anyway.
+check "out of hours the server refuses it" \
+  "$(api "$K_JAR" POST /api/submissions "{\"deedId\":$WD}" | j "['error']")" "outside_time_window"
+
+api "$P_JAR" PATCH "/api/catalog/deeds/$WD" "{\"windows\":$OPEN_W}" > /dev/null
+check "inside the window the tile is open" \
+  "$(api "$K_JAR" GET /api/catalog/deeds | jx "[x['locked'] for x in d['deeds'] if x['id']==$WD][0]")" ""
+check "inside the window it can be filed" \
+  "$(api "$K_JAR" POST /api/submissions "{\"deedId\":$WD}" | j "['submission']['status']")" "pending"
+# A patch that says nothing about windows is not a patch that clears them.
+api "$P_JAR" PATCH "/api/catalog/deeds/$WD" '{"points":6}' > /dev/null
+check "an unrelated edit keeps the windows" \
+  "$(api "$P_JAR" GET '/api/catalog/deeds?all=true' | jx "len([x for x in d['deeds'] if x['id']==$WD][0]['windows'])")" "1"
+check "and an empty list clears them" \
+  "$(api "$P_JAR" PATCH "/api/catalog/deeds/$WD" '{"windows":[]}' | jx "len(d['deed']['windows'])")" "0"
+
+check "a backwards window is refused" \
+  "$(api "$P_JAR" POST /api/catalog/deeds '{"title_lv":"Slikts","points":5,"windows":[{"start_min":600,"end_min":540}]}' | j "['error']")" \
+  "invalid_time_window"
+check "overlapping windows are refused" \
+  "$(api "$P_JAR" POST /api/catalog/deeds '{"title_lv":"Slikts","points":5,"windows":[{"start_min":420,"end_min":600},{"start_min":540,"end_min":700}]}' | j "['error']")" \
+  "invalid_time_window"
+check "five windows are too many" \
+  "$(api "$P_JAR" POST /api/catalog/deeds '{"title_lv":"Slikts","points":5,"windows":[{"start_min":0,"end_min":10},{"start_min":20,"end_min":30},{"start_min":40,"end_min":50},{"start_min":60,"end_min":70},{"start_min":80,"end_min":90}]}' | j "['error']")" \
+  "too_many_windows"
+
+echo "== how many times a day =="
+LD=$(api "$P_JAR" POST /api/catalog/deeds '{"title_lv":"Saklat gultu","points":5,"max_per_day":1}' | j "['deed']['id']")
+LS=$(api "$K_JAR" POST /api/submissions "{\"deedId\":$LD}" | j "['submission']['id']")
+check "the first one of the day goes through" "$([ -n "$LS" ] && echo yes)" "yes"
+check "the second is refused" \
+  "$(api "$K_JAR" POST /api/submissions "{\"deedId\":$LD}" | j "['error']")" "daily_limit_reached"
+# Pending counts against the cap — otherwise the same deed could be filed ten
+# times over before a parent had looked at the first one.
+check "and the tile says so" \
+  "$(api "$K_JAR" GET /api/catalog/deeds | jx "[x['locked'] for x in d['deeds'] if x['id']==$LD][0]")" "limit"
+check "today's count is shown" \
+  "$(api "$K_JAR" GET /api/catalog/deeds | jx "[x['done_today'] for x in d['deeds'] if x['id']==$LD][0]")" "1"
+
+api "$P_JAR" POST "/api/submissions/$LS/review" '{"decision":"reject","note":"gulta nav saklata"}' > /dev/null
+check "being turned down gives the slot back" \
+  "$(api "$K_JAR" POST /api/submissions "{\"deedId\":$LD}" | j "['submission']['status']")" "pending"
+check "but an approval does not" \
+  "$(api "$K_JAR" POST /api/submissions "{\"deedId\":$LD}" | j "['error']")" "daily_limit_reached"
+
+echo "== notifications =="
+check "a parent is told what is waiting" \
+  "$(api "$P_JAR" GET /api/notifications | jx "d['pendingSubmissions']>0")" "True"
+check "a parent gets no answer events" \
+  "$(api "$P_JAR" GET /api/notifications | jx "len(d['events'])")" "0"
+check "a kid is told their deed was turned down" \
+  "$(api "$K_JAR" GET /api/notifications | jx "len([e for e in d['events'] if e['status']=='rejected'])>0")" "True"
+check "a kid is not shown the pending queue" \
+  "$(api "$K_JAR" GET /api/notifications | jx "d['pendingSubmissions']")" "0"
+
 echo "== privacy between siblings =="
 KID2=$(api "$P_JAR" POST /api/users '{"name":"Bruno","username":"bruno","pin":"2222","role":"kid"}' | j "['user']['id']")
 check "kid cannot read sibling balance" \

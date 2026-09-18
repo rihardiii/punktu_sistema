@@ -57,3 +57,30 @@ Jādara pašam / do this yourself (cannot be done from here):
       until there is a number in it
 [x] add more generic icons in all of the categories — 12 -> 24 per group
 [x] add health / bathroom categories for icons
+[x] what about notifications?
+    - in-app only: a count on the tab (parent: waiting for a decision, and
+      forgotten PINs; kid: a request was answered) plus a toast on screen.
+    - real push is not possible here: it needs an HTTPS certificate and a
+      detour through Google's or Mozilla's servers, which is what self-hosting
+      this was meant to avoid. Revisit only if the NAS ever gets HTTPS.
+[x] deeds and rewards buttons are inline with the text but when it is in latvian the text is longer than the english version and it makes the buttons drop down.
+    - the toggle now takes its own full-width row below the heading until the
+      screen is wide enough for both (560px). Shared .page-head class.
+[x] a timeframe for some tasks (for example brush your teeth can be done only in the morning and evening)
+    - up to four windows per deed, because "morning and evening" is two ranges
+      and one from/to pair could never say it. Enforced on the server too, not
+      just greyed out on screen.
+[x] how many times some tasks can be done (for example brushing teeth can be done twice, cleaning your room - once a day)
+    - pending submissions count against the cap, rejected ones give the slot
+      back. The day boundary is the server's (TZ=Europe/Riga), not the phone's.
+[x] some sort of automatic update without page refresh?
+    - every screen re-reads its data every 15s, pauses while the tab is hidden
+      and catches up the moment it is looked at again.
+[ ] create a test.cmd that proposes to run tests:
+0. All tests
+1. Typecheck only
+2. API tests
+3. Browser tests
+Default 0
+i choose a test and run it.
+so i can open the web page on localhost and test the new features after which i can ctrl+c to close it

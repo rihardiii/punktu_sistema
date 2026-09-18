@@ -3,6 +3,7 @@ import { db } from '../db.ts';
 import { requireParent, requireUser } from '../auth.ts';
 import { HttpError, id, optStr, str } from '../validate.ts';
 import { addLedgerEntry } from '../points.ts';
+import { lockForKid } from '../deeds.ts';
 import type { ReviewStatus } from '../types.ts';
 
 export const submissionsRouter = Router();
@@ -69,9 +70,22 @@ submissionsRouter.post('/', requireUser, (req, res) => {
 
   const deedId = id(req.body?.deedId, 'deedId');
   const deed = db.prepare('SELECT * FROM deeds WHERE id = ? AND active = 1').get(deedId) as
-    | { id: number; title_lv: string; icon: string; points: number }
+    | { id: number; title_lv: string; icon: string; points: number; max_per_day: number }
     | undefined;
   if (!deed) throw new HttpError(404, 'deed_not_found');
+
+  /*
+   * The kid's screen already greys out a deed that is out of hours or done for
+   * the day, but that decision was made when the list was fetched — an app left
+   * open past 10:00, or a second phone, would still hold a live-looking tile.
+   * The rule is settled here, at the moment it actually matters.
+   *
+   * No await runs between this check and the insert, so nothing can slip a
+   * second submission in between and beat the daily cap.
+   */
+  const locked = lockForKid(deed, kidId);
+  if (locked === 'window') throw new HttpError(409, 'outside_time_window');
+  if (locked === 'limit') throw new HttpError(409, 'daily_limit_reached');
 
   const note = optStr(req.body?.note, 'note', 300);
   const info = db

@@ -15,7 +15,7 @@
 services:
   punkti:
     # Pin a version instead of :latest if you would rather choose exactly when
-    # the app changes — e.g. ghcr.io/rihardiii/punktu_sistema:0.11.0
+    # the app changes — e.g. ghcr.io/rihardiii/punktu_sistema:0.12.0
     image: ghcr.io/rihardiii/punktu_sistema:latest
     container_name: punkti
     restart: unless-stopped

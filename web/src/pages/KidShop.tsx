@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { api, ApiError } from '../api.ts';
 import { useAuth } from '../auth.tsx';
 import { useErrorText, useI18n } from '../i18n.tsx';
+import { usePoll, useSeen } from '../live.tsx';
 import {
   Button,
   Card,
@@ -21,6 +22,9 @@ export function KidShop() {
   const toast = useToast();
   const errorText = useErrorText();
   const formatDate = useFormatDate();
+  // The answers to reward requests are listed on this screen, so the tab badge
+  // has done its job once the kid is here.
+  useSeen('reward');
 
   const [balance, setBalance] = useState<Balance | null>(null);
   const [rewards, setRewards] = useState<Reward[]>([]);
@@ -33,16 +37,17 @@ export function KidShop() {
   const kidId = user!.id;
 
   const load = useCallback(async () => {
-    const [b, r, m] = await Promise.all([api.balance(kidId), api.rewards(), api.redemptions()]);
-    setBalance(b);
-    setRewards(r.rewards);
-    setMine(m.redemptions);
-    setLoading(false);
+    try {
+      const [b, r, m] = await Promise.all([api.balance(kidId), api.rewards(), api.redemptions()]);
+      setBalance(b);
+      setRewards(r.rewards);
+      setMine(m.redemptions);
+    } finally {
+      setLoading(false);
+    }
   }, [kidId]);
 
-  useEffect(() => {
-    void load().catch(() => setLoading(false));
-  }, [load]);
+  usePoll(load);
 
   const request = async () => {
     if (!chosen) return;

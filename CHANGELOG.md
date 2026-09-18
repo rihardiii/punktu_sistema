@@ -9,6 +9,84 @@ atkarībā no izmaiņas apjoma. `package.json` atspoguļo to semver formātā
 
 ---
 
+## [0.12] — 2026-09-17
+
+### Pievienots / Added
+
+- **Laika logi darbiem.** Katram darbam var uzlikt laikus, kuros to drīkst
+  pieteikt: ārpus tiem plāksnīte bērna ekrānā ir pelēka, ar pulksteni un
+  laikiem zem nosaukuma.
+
+  Logu drīkst būt vairāki (līdz četriem), un tas nav greznība — piemērs, kas
+  šo prasīja, ir zobu tīrīšana no rīta **un** vakarā, ko viens "no–līdz" pāris
+  nekad nespētu pateikt. Tāpēc logi glabājas atsevišķā tabulā `deed_windows`,
+  nevis divās kolonnās pie paša darba.
+
+  Laiki tiek glabāti kā minūtes no pusnakts, abi gali ieskaitot: `420–600` ir
+  tieši tas `07:00–10:00`, ko vecāks ierakstīja. Pārklājušies logi tiek
+  noraidīti, nevis klusi salieti kopā: kas ierakstījis `07:00–10:00` un
+  `09:00–11:00`, ir kļūdījies, un pārtaisīt to par `07:00–11:00` nozīmētu šo
+  kļūdu no viņa noslēpt.
+
+- **Cik reižu dienā.** Otrs, neatkarīgs ierobežojums: "istabu uzkopj reizi
+  dienā", "zobus tīra divas". `0` nozīmē "cik reižu vien grib", un tieši tāda
+  ir noklusētā vērtība, tāpēc viss esošais katalogs strādā kā līdz šim.
+
+  Skaitās arī pieteikumi, kas vēl gaida vecāka lēmumu — citādi vienu un to pašu
+  darbu varētu pieteikt desmit reizes, pirms kāds paspējis apskatīt pirmo.
+  Noraidīts pieteikums turpretī neskaitās: ja vecāks saka "gulta nav saklāta",
+  tas nedrīkst bērnam paņemt visu atlikušo dienu.
+
+  Diena un pulkstenis ir servera, nevis telefona: konteiners strādā ar
+  `TZ=Europe/Riga`, tāpēc "šodien" un "07:00" nozīmē to, ko ar tiem saprot
+  mājās, neatkarīgi no tā, ko bērns sarecējis savos iestatījumos.
+
+- **Abi noteikumi tiek pārbaudīti arī serverī**, ne tikai ekrānā. Pelēkā
+  plāksnīte ir lēmums, kas pieņemts brīdī, kad saraksts tika ielādēts, —
+  lietotne, kas palikusi atvērta pāri pulksten desmitiem, vai otrs telefons
+  citādi joprojām turētu dzīvu izskatošu pogu. Atteikums atgriež
+  `outside_time_window` vai `daily_limit_reached`.
+
+- **Lietotne atjaunojas pati.** Katrs ekrāns pārlādē savus datus ik pēc 15
+  sekundēm, tāpēc vecāka lēmums, jauns pieteikums un atvērušies laika logi
+  parādās bez lapas pārlādēšanas. Aptauja apstājas, kamēr cilne ir paslēpta, un
+  turpinās tajā pašā mirklī, kad uz tās atkal paskatās — telefons kabatā
+  neaptaujā serveri visu pēcpusdienu. Pieprasījumi nepārklājas: ja kāds
+  aizkavējas, nākamais tiek izlaists, nevis sakrauts aiz tā.
+
+- **Paziņojumi lietotnē.** Vecākam — skaitlis uz cilnes ar to, kas gaida
+  lēmumu, un atsevišķi ar aizmirstajiem PIN. Bērnam — skaitlis uz cilnes, kad
+  pieteikums ir izskatīts, un paziņojuma lodziņš ekrānā, ja viņš tobrīd skatās.
+  Kurš paziņojums jau ir rādīts, glabājas pārlūkā, tāpēc serverim nav jāzina
+  neviena ierīce.
+
+  Īstie push paziņojumi (telefons nočirkst, kamēr lietotne ir aizvērta) šeit
+  nav iespējami: tiem vajag HTTPS sertifikātu un apgaitu caur Google vai
+  Mozilla serveriem, kas ir tieši tas, no kā šīs lietotnes pašhostēšana izvairās.
+
+- **Sākuma katalogā divi darbi ar noteikumiem** — "Iztīrīt zobus" (`06:00–10:00`
+  un `19:00–22:30`, divreiz dienā) un "Saklāt gultu" (`06:00–11:00`, reizi
+  dienā). Daļēji tāpēc, ka noteikumi tiem tiešām der, daļēji tāpēc, lai vecāks,
+  atverot rediģēšanas logu, atrastu gatavu piemēru, nevis tukšu lauku.
+
+- **Pārbaudes** abiem noteikumiem `server/test/smoke.sh` (76 pārbaudes) un
+  pārlūkā `web/test/ui.mjs`. Laika logi tajās tiek rēķināti no pašreizējā
+  pulksteņa, tāpēc tests, kas palaists astoņos no rīta, pārbauda to pašu, ko
+  tests vienpadsmitos vakarā.
+
+### Labots / Fixed
+
+- **Darbu / balvu pārslēgs nokrita otrā rindā.** Kataloga virsraksts un
+  pārslēgs stāvēja vienā rindā, bet latviski "Labo darbu saraksts" ir pusotru
+  reizi garāks nekā "Good deeds", tāpēc telefona platumā pārslēgam vietas
+  neatlika un tas aizlēca uz nākamo rindu — pa kreisi, šauri, kā nejaušība.
+
+  Tagad tas līdz 560 px vienmēr aizņem savu pilna platuma rindu zem virsraksta,
+  kas izskatās apzināti abās valodās, un platākā ekrānā abi joprojām stāv
+  blakus. Risinājums ir kopīgā `.page-head` klasē, nevis pie šīs vienas lapas.
+
+---
+
 ## [0.11] — 2026-09-17
 
 ### Labots / Fixed

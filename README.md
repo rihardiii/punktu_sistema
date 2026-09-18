@@ -42,14 +42,14 @@ npm start
 Serveris parādīs adreses, kuras atvērt pārlūkā:
 
 ```
-  Punktu sistēma v0.11
+  Punktu sistēma v0.12
   Datubāze / database: C:\...\punktu_sistema\data\punkti.sqlite
   Lokāli / local:      http://localhost:4173
   Tīklā / on the LAN:  http://192.168.1.132:4173
 ```
 
 Atver **lokālo** adresi, izveido pirmo vecāka kontu — un viss. Lietotne uzreiz
-ir aizpildīta ar 12 labajiem darbiem un 8 balvām latviski, ko vari brīvi labot.
+ir aizpildīta ar 14 labajiem darbiem un 8 balvām latviski, ko vari brīvi labot.
 
 ### Iestatījumi / Configuration
 
@@ -75,6 +75,21 @@ vai noraida. Punkti tiek pieskaitīti tikai pēc apstiprinājuma.
 
 **Balvas:** bērns pieprasa balvu, punkti tiek *rezervēti*, un vecāks lemj. Ja
 vecāks atsaka, punkti atgriežas — bērns neko nezaudē.
+
+**Neviens nav jāpārlādē.** Katrs ekrāns atjaunojas pats ik pēc 15 sekundēm, uz
+cilnes parādās skaitlis ar to, kas gaida lēmumu vai kas ir izlemts, un bērns
+uzreiz redz paziņojumu, ja tobrīd skatās ekrānā.
+
+### Kad un cik bieži / When and how often
+
+Darbam var uzlikt divus neatkarīgus noteikumus:
+
+- **Laika logus** — līdz četriem, jo, piemēram, zobus tīra no rīta *un* vakarā.
+  Ārpus tiem plāksnīte ir pelēka un rāda, kad tā atvērsies.
+- **Cik reižu dienā** — `0` nozīmē bez ierobežojuma.
+
+Pieteikums, kas vēl gaida lēmumu, skaitās pret dienas limitu; noraidīts —
+neskaitās. Diena un pulkstenis ir servera (`TZ`), nevis telefona.
 
 ### Punktu grāmatvedība
 
@@ -398,10 +413,12 @@ server/          Node + Express + SQLite (better-sqlite3), TypeScript
   src/schema.ts    Migrācijas — pievieno jaunu, nekad nelabo veco
   src/points.ts    Bilances aprēķins no virsgrāmatas
   src/routes/      REST API
-  test/smoke.sh    30 pārbaudes visai plūsmai
+  src/deeds.ts     Laika logi un dienas limits
+  test/smoke.sh    76 pārbaudes visai plūsmai
 web/             React 19 + Vite, PWA
   src/i18n.tsx     Latviešu un angļu valoda
   src/theme.tsx    Gaišā / tumšā / pielāgota tēma
+  src/live.tsx     Aptauja, cilņu skaitļi un paziņojumi
   src/styles/      Dizaina mainīgie un komponentes
   test/ui.mjs      Pārlūka testi (Playwright, nav obligāta atkarība)
 Dockerfile         Divpakāpju build; datubāze /data sējumā
@@ -412,7 +429,7 @@ deploy/            Dockge steki: GHCR attēls un "nokopē mapi"
 
 ### Testi
 
-API testi (30 pārbaudes, nav vajadzīgas papildu atkarības):
+API testi (76 pārbaudes, nav vajadzīgas papildu atkarības):
 
 ```bash
 PUNKTI_DB=/tmp/test.sqlite PORT=4199 npm run dev:server &

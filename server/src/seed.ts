@@ -1,22 +1,83 @@
 import { db } from './db.ts';
+import { replaceWindows, type TimeWindow } from './deeds.ts';
+
+/** Minutes since midnight, so the table below stays readable. */
+const at = (hour: number, minute = 0): number => hour * 60 + minute;
+
+interface StarterDeed {
+  lv: string;
+  en: string;
+  icon: string;
+  points: number;
+  cat: string;
+  /** 0 = as often as you like. */
+  maxPerDay?: number;
+  /** Empty = any time of day. */
+  windows?: TimeWindow[];
+}
 
 /**
  * Starter catalog so a fresh install is usable immediately. Parents can edit,
  * deactivate or delete every one of these — they are only a first draft.
+ *
+ * Three of them carry a time window or a daily cap. That is partly because the
+ * rules genuinely fit those chores, and partly so a parent opening the editor
+ * finds a worked example instead of an empty field they have to guess at.
  */
-const STARTER_DEEDS: Array<[lv: string, en: string, icon: string, points: number, cat: string]> = [
-  ['Nomazgāt traukus', 'Wash the dishes', '🍽️', 10, 'Virtuve'],
-  ['Salikt traukus skapī', 'Put the dishes away', '🥣', 5, 'Virtuve'],
-  ['Uzkopt savu istabu', 'Tidy my room', '🧹', 15, 'Mājas darbi'],
-  ['Izsūkt putekļus', 'Vacuum the floor', '🧽', 15, 'Mājas darbi'],
-  ['Salocīt un salikt drēbes', 'Fold and put away clothes', '👕', 10, 'Mājas darbi'],
-  ['Iznest atkritumus', 'Take out the rubbish', '🗑️', 5, 'Mājas darbi'],
-  ['Pieskatīt brāli vai māsu', 'Look after a sibling', '🧸', 20, 'Ģimene'],
-  ['Palīdzēt gatavot ēdienu', 'Help cook a meal', '🍲', 15, 'Virtuve'],
-  ['Īpaši laipna uzvedība', 'Being extra polite', '😊', 10, 'Ģimene'],
-  ['Pabeigt mājasdarbus bez atgādinājuma', 'Homework done without reminders', '📚', 20, 'Skola'],
-  ['Pabarot mājdzīvnieku', 'Feed the pet', '🐾', 5, 'Ģimene'],
-  ['Palīdzēt dārzā', 'Help in the garden', '🌱', 15, 'Ārā'],
+const STARTER_DEEDS: StarterDeed[] = [
+  { lv: 'Nomazgāt traukus', en: 'Wash the dishes', icon: '🍽️', points: 10, cat: 'Virtuve' },
+  { lv: 'Salikt traukus skapī', en: 'Put the dishes away', icon: '🥣', points: 5, cat: 'Virtuve' },
+  {
+    lv: 'Uzkopt savu istabu',
+    en: 'Tidy my room',
+    icon: '🧹',
+    points: 15,
+    cat: 'Mājas darbi',
+    maxPerDay: 1,
+  },
+  { lv: 'Izsūkt putekļus', en: 'Vacuum the floor', icon: '🧽', points: 15, cat: 'Mājas darbi' },
+  {
+    lv: 'Salocīt un salikt drēbes',
+    en: 'Fold and put away clothes',
+    icon: '👕',
+    points: 10,
+    cat: 'Mājas darbi',
+  },
+  { lv: 'Iznest atkritumus', en: 'Take out the rubbish', icon: '🗑️', points: 5, cat: 'Mājas darbi' },
+  {
+    lv: 'Iztīrīt zobus',
+    en: 'Brush my teeth',
+    icon: '🪥',
+    points: 5,
+    cat: 'Veselība',
+    maxPerDay: 2,
+    windows: [
+      { start_min: at(6), end_min: at(10) },
+      { start_min: at(19), end_min: at(22, 30) },
+    ],
+  },
+  {
+    lv: 'Saklāt gultu',
+    en: 'Make my bed',
+    icon: '🛏️',
+    points: 5,
+    cat: 'Mājas darbi',
+    maxPerDay: 1,
+    windows: [{ start_min: at(6), end_min: at(11) }],
+  },
+  { lv: 'Pieskatīt brāli vai māsu', en: 'Look after a sibling', icon: '🧸', points: 20, cat: 'Ģimene' },
+  { lv: 'Palīdzēt gatavot ēdienu', en: 'Help cook a meal', icon: '🍲', points: 15, cat: 'Virtuve' },
+  { lv: 'Īpaši laipna uzvedība', en: 'Being extra polite', icon: '😊', points: 10, cat: 'Ģimene' },
+  {
+    lv: 'Pabeigt mājasdarbus bez atgādinājuma',
+    en: 'Homework done without reminders',
+    icon: '📚',
+    points: 20,
+    cat: 'Skola',
+    maxPerDay: 1,
+  },
+  { lv: 'Pabarot mājdzīvnieku', en: 'Feed the pet', icon: '🐾', points: 5, cat: 'Ģimene' },
+  { lv: 'Palīdzēt dārzā', en: 'Help in the garden', icon: '🌱', points: 15, cat: 'Ārā' },
 ];
 
 const STARTER_REWARDS: Array<[lv: string, en: string, icon: string, cost: number, dlv: string]> = [
@@ -36,8 +97,9 @@ export function seedStarterCatalog(createdBy: number): void {
   const rewards = (db.prepare('SELECT COUNT(*) AS n FROM rewards').get() as { n: number }).n;
 
   const insertDeed = db.prepare(
-    `INSERT INTO deeds (title_lv, title_en, icon, points, category, sort_order, created_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO deeds (title_lv, title_en, icon, points, category, sort_order,
+                        max_per_day, created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const insertReward = db.prepare(
     `INSERT INTO rewards (title_lv, title_en, icon, cost, description_lv, sort_order, created_by)
@@ -46,9 +108,19 @@ export function seedStarterCatalog(createdBy: number): void {
 
   db.transaction(() => {
     if (deeds === 0) {
-      STARTER_DEEDS.forEach(([lv, en, icon, points, cat], i) =>
-        insertDeed.run(lv, en, icon, points, cat, i, createdBy),
-      );
+      STARTER_DEEDS.forEach((deed, i) => {
+        const info = insertDeed.run(
+          deed.lv,
+          deed.en,
+          deed.icon,
+          deed.points,
+          deed.cat,
+          i,
+          deed.maxPerDay ?? 0,
+          createdBy,
+        );
+        if (deed.windows) replaceWindows(Number(info.lastInsertRowid), deed.windows);
+      });
     }
     if (rewards === 0) {
       STARTER_REWARDS.forEach(([lv, en, icon, cost, dlv], i) =>

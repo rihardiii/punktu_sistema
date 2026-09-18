@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { api } from '../api.ts';
 import { useAuth } from '../auth.tsx';
 import { useI18n } from '../i18n.tsx';
+import { usePoll } from '../live.tsx';
 import { Card, Empty, LoadingScreen, useFormatDate } from '../components/ui.tsx';
 import type { LedgerEntry } from '../types.ts';
 
@@ -20,12 +21,15 @@ export function History({ kidId: kidIdProp }: { kidId?: number }) {
 
   const [entries, setEntries] = useState<LedgerEntry[] | null>(null);
 
-  useEffect(() => {
-    api
-      .ledger(kidId)
-      .then((data) => setEntries(data.entries))
-      .catch(() => setEntries([]));
+  const load = useCallback(async () => {
+    try {
+      setEntries((await api.ledger(kidId)).entries);
+    } catch {
+      setEntries((current) => current ?? []);
+    }
   }, [kidId]);
+
+  usePoll(load);
 
   if (entries === null) return <LoadingScreen />;
 

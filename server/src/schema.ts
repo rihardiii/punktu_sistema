@@ -147,4 +147,31 @@ export const MIGRATIONS: string[] = [
   CREATE UNIQUE INDEX idx_pin_requests_open ON pin_requests(user_id)
     WHERE status = 'pending';
   `,
+
+  // --- v3: when a deed may be done, and how often -------------------------
+  `
+  -- 0 means "as often as you like", which is how every existing deed behaves,
+  -- so the default silently keeps the whole catalog working as before.
+  ALTER TABLE deeds ADD COLUMN max_per_day INTEGER NOT NULL DEFAULT 0;
+
+  -- Times of day a deed may be filed in. A deed with no rows here is available
+  -- around the clock. Several rows are the point rather than a nicety: "brush
+  -- your teeth, morning and evening" is two disjoint windows, which a single
+  -- from/to pair on the deed itself could never express.
+  --
+  -- Minutes since local midnight, both ends inclusive, so 420–600 reads as
+  -- "07:00 to 10:00" — exactly what the parent typed.
+  CREATE TABLE deed_windows (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    deed_id   INTEGER NOT NULL REFERENCES deeds(id) ON DELETE CASCADE,
+    start_min INTEGER NOT NULL CHECK (start_min >= 0 AND start_min <= 1439),
+    end_min   INTEGER NOT NULL CHECK (end_min   >= 0 AND end_min   <= 1439),
+    CHECK (end_min > start_min)
+  );
+  CREATE INDEX idx_deed_windows_deed ON deed_windows(deed_id, start_min);
+
+  -- "How many times today" is counted per kid per deed on every catalog load,
+  -- so give that count an index of its own.
+  CREATE INDEX idx_submissions_kid_deed ON submissions(kid_id, deed_id, created_at);
+  `,
 ];
