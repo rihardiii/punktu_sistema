@@ -13,11 +13,12 @@
 # unprivileged user, so the directory's owner on the host does not matter.
 
 services:
-  punkti:
+  punktu_sistema:
     # Pin a version instead of :latest if you would rather choose exactly when
-    # the app changes — e.g. ghcr.io/rihardiii/punktu_sistema:0.12.0
+    # the app changes. The published tags are listed under the repository's
+    # Packages page; the form is ghcr.io/rihardiii/punktu_sistema:<versija>.
     image: ghcr.io/rihardiii/punktu_sistema:latest
-    container_name: punkti
+    container_name: punktu_sistema
     restart: unless-stopped
 
     ports:
@@ -27,7 +28,7 @@ services:
     volumes:
       # The family's entire history is one SQLite file in here.
       # Snapshot this dataset — it is the only thing that cannot be rebuilt.
-      - /mnt/apps/punkti/data:/data
+      - /mnt/apps/punktu_sistema/data:/data
 
     environment:
       PUNKTI_DB: /data/punkti.sqlite

@@ -1,10 +1,36 @@
+import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const API_TARGET = process.env.API_TARGET ?? 'http://localhost:4173';
 
+/*
+ * Versija nāk no saknes package.json — vienīgās vietas, kur to maina — un tiek
+ * iešūta paketē būvējot. Fails tiek lasīts šeit, nevis importēts no kopīga
+ * moduļa, apzināti: Vite konfigurāciju sabūvē pagaidu failā, un importētam
+ * modulim `import.meta.url` var tikt pārrakstīts uz konfigurācijas atrašanās
+ * vietu, kas klusi salauztu no tā atkarīgu ceļu.
+ *
+ * Tāpēc `toDisplayVersion` ir divās vietās: šeit un server/src/version.ts.
+ * Ka abas atbild vienu un to pašu, pārbauda web/test/ui.mjs.
+ */
+const semver = (
+  JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+    version?: string;
+  }
+).version;
+
+function toDisplayVersion(value: string): string {
+  const [major = '0', minor = '0', patch = '0'] = value.split('.');
+  const base = `${major}.${minor.padStart(2, '0')}`;
+  return patch === '0' ? base : `${base}.${patch}`;
+}
+
+const APP_VERSION = toDisplayVersion(semver ?? '0.0.0');
+
 export default defineConfig({
+  define: { __APP_VERSION__: JSON.stringify(APP_VERSION) },
   plugins: [
     react(),
     VitePWA({

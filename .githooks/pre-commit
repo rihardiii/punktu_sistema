@@ -1,0 +1,70 @@
+#!/bin/sh
+#
+# Paceļ pēdējo versijas ciparu katrā commit / bumps the patch on every commit.
+#
+# Projekta shēma: 0.12.0 -> 0.12.1 -> 0.12.2 par katru commit, un 0.13.0, kad
+# sanāk kaut kas, kas ir pelnījis jaunu versiju. Tā NAS vienmēr var pateikt,
+# tieši kuru būvējumu tas darbina.
+#
+# Versija ir tikai saknes package.json; serveris un pārlūka pakete to nolasa no
+# turienes (skat. server/src/version.ts).
+#
+# Šis āķis strādā tikai tad, ja git zina, kur to meklēt:
+#
+#     git config core.hooksPath .githooks
+#
+# To izdara arī `npm install` (skripts "prepare" saknes package.json), tāpēc
+# jaunā klonā par to nav jādomā.
+#
+# Apiet vienu reizi:  git commit --no-verify
+#
+set -e
+
+PKG="$(git rev-parse --show-toplevel)/package.json"
+[ -f "$PKG" ] || exit 0
+
+# Merge, rebase un cherry-pick nav jauns darbs, tāpēc tie versiju neceļ.
+GIT_DIR_PATH="$(git rev-parse --git-dir)"
+for marker in MERGE_HEAD REBASE_HEAD CHERRY_PICK_HEAD BISECT_LOG; do
+  if [ -e "$GIT_DIR_PATH/$marker" ]; then
+    exit 0
+  fi
+done
+
+# Izvelk "0.12.1" no manifesta teksta.
+version_of() {
+  grep -m1 -oE '"version"[[:space:]]*:[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+"' \
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+'
+}
+
+WORKING="$(version_of < "$PKG" || true)"
+HEAD_VERSION="$(git show HEAD:package.json 2>/dev/null | version_of || true)"
+
+# Pirmais commit repozitorijā — nav ar ko salīdzināt, tāpēc neaiztiek.
+[ -n "$HEAD_VERSION" ] || exit 0
+[ -n "$WORKING" ] || exit 0
+
+# Jau uzlikta ar roku (piemēram, 0.12.0 -> 0.13.0 jaunam laidienam): tad šis
+# āķis neko nedara, citādi tas uzrakstītu pa virsu tam, ko cilvēks izlēma.
+if [ "$WORKING" != "$HEAD_VERSION" ]; then
+  echo "pre-commit: versija jau ir $WORKING (bija $HEAD_VERSION) — neaiztieku."
+  exit 0
+fi
+
+NEXT="$(
+  node -e '
+    const fs = require("fs");
+    const path = process.argv[1];
+    const text = fs.readFileSync(path, "utf8");
+    const match = text.match(/"version"\s*:\s*"(\d+)\.(\d+)\.(\d+)"/);
+    if (!match) process.exit(3);
+    const next = `${match[1]}.${match[2]}.${Number(match[3]) + 1}`;
+    // Aizvieto tikai šo vienu virkni, nevis pārrakstu JSON no jauna, lai
+    // atkāpes, lauku kārtība un komentāri paliek tādi, kādi bija.
+    fs.writeFileSync(path, text.replace(match[0], `"version": "${next}"`));
+    process.stdout.write(next);
+  ' "$PKG"
+)"
+
+git add -- "$PKG"
+echo "pre-commit: versija $HEAD_VERSION -> $NEXT"

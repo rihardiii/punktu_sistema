@@ -154,6 +154,28 @@ check(
   1,
 );
 
+console.log('== the app and the server agree on the version ==');
+/*
+ * The version is written in one place, the root package.json, but it reaches
+ * the screen and the API by different routes: Vite inlines it at build time,
+ * the server reads the manifest at startup. Each applies its own copy of the
+ * 0.12.0 -> 0.12 conversion, so this is the check that stops those two copies
+ * from drifting apart unnoticed.
+ */
+await page.locator('.tab', { hasText: 'Iestatījumi' }).click();
+await page.waitForTimeout(700);
+const shownVersion = await page
+  .locator('.row-between', { hasText: 'Versija' })
+  .locator('.tnum')
+  .innerText();
+const healthVersion = await page.evaluate(() =>
+  fetch('/api/health')
+    .then((r) => r.json())
+    .then((d) => d.version),
+);
+check('the screen shows a version at all', /^\d+\.\d+/.test(shownVersion.trim()), true);
+check('and it is the one the server reports', shownVersion.trim(), healthVersion);
+
 console.log('== an open request badges its tab ==');
 // Anna's forgotten PIN is still waiting, and badges are the only notification
 // this app has — over plain HTTP on a LAN the browser's push APIs do nothing.

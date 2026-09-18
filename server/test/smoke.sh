@@ -285,6 +285,23 @@ check "the lock is per account, not per device" \
   "$(api "$L_JAR" POST /api/auth/login '{"username":"anna","pin":"1111"}' | j "['user']['name']")" \
   "Anna"
 
+echo "== version comes from one place =="
+# The root package.json is the only place the version is written down. If this
+# check fails, either the server could not find that file — which is how it
+# would break inside the Docker image, where only /app/package.json is copied —
+# or the 0.12.0 -> 0.12 conversion has drifted.
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+# The manifest is piped in rather than opened by path: on Windows this script
+# runs under Git Bash, whose /c/... paths Python cannot open.
+WANT_VERSION=$(cat "$ROOT/package.json" | python -c "
+import sys, json
+major, minor, patch = json.load(sys.stdin)['version'].split('.')
+base = major + '.' + minor.zfill(2)
+print(base if patch == '0' else base + '.' + patch)
+")
+check "health reports the package.json version" \
+  "$(api "$P_JAR" GET /api/health | j "['version']")" "$WANT_VERSION"
+
 echo "== malformed input =="
 check "unparseable JSON is a 400, not a 500" \
   "$(curl -s -X POST -H 'Content-Type: application/json' -d '{bad' "$BASE/api/auth/login" | j "['error']")" \

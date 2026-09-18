@@ -69,10 +69,33 @@ atkarībā no izmaiņas apjoma. `package.json` atspoguļo to semver formātā
   dienā). Daļēji tāpēc, ka noteikumi tiem tiešām der, daļēji tāpēc, lai vecāks,
   atverot rediģēšanas logu, atrastu gatavu piemēru, nevis tukšu lauku.
 
-- **Pārbaudes** abiem noteikumiem `server/test/smoke.sh` (76 pārbaudes) un
-  pārlūkā `web/test/ui.mjs`. Laika logi tajās tiek rēķināti no pašreizējā
-  pulksteņa, tāpēc tests, kas palaists astoņos no rīta, pārbauda to pašu, ko
-  tests vienpadsmitos vakarā.
+- **Pārbaudes** abiem noteikumiem `server/test/smoke.sh` (77 pārbaudes) un
+  pārlūkā `web/test/ui.mjs` (25 pārbaudes). Laika logi tajās tiek rēķināti no
+  pašreizējā pulksteņa, tāpēc tests, kas palaists astoņos no rīta, pārbauda to
+  pašu, ko tests vienpadsmitos vakarā.
+
+- **`test.cmd`** saknē: izvēlne ar visiem testiem, tikai typecheck, API vai
+  pārlūka testiem, un pēc tam lietotne paliek atvērta uz `localhost:4173`, lai
+  jauno var aptaustīt ar roku. Rokas testēšanai tiek lietota atsevišķa
+  `data\test.sqlite`, nevis ģimenes datubāze.
+
+### Mainīts / Changed
+
+- **Versija tagad tiek mainīta vienā vietā — saknes `package.json`.** Līdz šim
+  tas pats skaitlis bija ierakstīts deviņās vietās (divos `version.ts`, trijos
+  `package.json`, `docker-compose.yml`, `deploy/dockge-stack.yml`, README un
+  CHANGELOG), un tās klusi izgāja no soļa: šī paša faila 0.11 ierakstā ir
+  atsevišķs punkts par "Version mismatch in the compose file".
+
+  Tagad serveris nolasa manifestu startējot, un Vite iešuj versiju pārlūka
+  paketē būvējot. `server/package.json` un `web/package.json` savu versiju
+  vairs nenes nemaz — tās ir privātas darbvietas, un neviens to nelasīja.
+  `docker-compose.yml` vairs nesatur versiju: tas būvē attēlu lokāli, un tagu
+  ar versiju uzliek CI.
+
+  Pārveidi `0.12.0` → `0.12` (un `0.9.0` → `0.09`) dara abas puses katra pati,
+  tāpēc `web/test/ui.mjs` pārbauda, ka ekrāns un `/api/health` atbild vienu un
+  to pašu, bet `smoke.sh` — ka tas sakrīt ar `package.json`.
 
 ### Labots / Fixed
 

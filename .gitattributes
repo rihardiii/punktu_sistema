@@ -6,8 +6,15 @@
 # dies with "bad interpreter". Windows checkouts must keep LF for these.
 *.sh        text eol=lf
 Dockerfile  text eol=lf
+# Git runs hooks through its own sh, which chokes on CRLF the same way. No .sh
+# extension on these, so they need naming outright.
+.githooks/* text eol=lf
 *.yml       text eol=lf
 *.yaml      text eol=lf
+
+# Executed by cmd.exe, which is unreliable with LF endings — a `goto` into a
+# label past an LF-only line can silently fall through.
+*.cmd       text eol=crlf
 
 # Binary assets git must not touch.
 *.png    binary

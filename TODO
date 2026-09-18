@@ -76,7 +76,7 @@ Jādara pašam / do this yourself (cannot be done from here):
 [x] some sort of automatic update without page refresh?
     - every screen re-reads its data every 15s, pauses while the tab is hidden
       and catches up the moment it is looked at again.
-[ ] create a test.cmd that proposes to run tests:
+[x] create a test.cmd that proposes to run tests:
 0. All tests
 1. Typecheck only
 2. API tests
@@ -84,3 +84,37 @@ Jādara pašam / do this yourself (cannot be done from here):
 Default 0
 i choose a test and run it.
 so i can open the web page on localhost and test the new features after which i can ctrl+c to close it
+    - test.cmd in the repo root. Double-click it, or `test.cmd 2` to skip the
+      menu. Every choice ends by serving the app on localhost:4173 and opening
+      the browser; Ctrl+C closes it.
+    - the manual-test server uses data\test.sqlite, never the family's
+      data\punkti.sqlite. Delete that file to start from an empty house.
+    - if tests fail it says so and asks before serving anyway.
+    - no version bump: this is tooling, the app itself did not change.
+[x] add one place in main file or a constants file where the version number is located and references, so that it is edited in one place instead of 5
+    - the one place is the root package.json "version" (semver). The server
+      reads it at startup; Vite inlines it into the web bundle at build time;
+      CI already read it for the image tag.
+    - 0.12.0 -> "0.12" and 0.9.0 -> "0.09", matching the .01 scheme. Each side
+      does that conversion itself, so ui.mjs checks the screen and /api/health
+      agree, and smoke.sh checks both match package.json.
+    - server/package.json and web/package.json no longer carry a version at
+      all (private workspaces, nothing read them). docker-compose.yml builds
+      locally and is now tagged :local instead of a version.
+    - CHANGELOG still gets a new heading per release — that is a log, not a
+      copy of the number.
+    - to release 0.13: edit that one line. npm ci does not mind the lockfile
+      being a version behind; `npm install --package-lock-only` syncs it.
+[x] before we push a major version, each commit and push increments a minor version number 0.0.1 for example. major version is 0.1.0 and so on.
+    - .githooks/pre-commit bumps the last digit on every commit: 0.12.1,
+      0.12.2, ... For a release set the middle digit by hand (0.13.0) and the
+      hook leaves it alone, because it only bumps when the version still
+      matches HEAD.
+    - it bumps once per commit, not per push: pushing five commits does not
+      add five more.
+    - skipped for merge / rebase / cherry-pick. `git commit --no-verify`
+      skips it once.
+    - the hook lives in the repo (not .git/hooks) so it travels with a clone;
+      `npm install` points git at it via the "prepare" script. One-time
+      manual equivalent: git config core.hooksPath .githooks
+    - the UI shows 0.12.1 for a patch build and plain 0.13 for a release.

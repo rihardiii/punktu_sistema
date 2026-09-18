@@ -42,7 +42,7 @@ npm start
 Serveris parādīs adreses, kuras atvērt pārlūkā:
 
 ```
-  Punktu sistēma v0.12
+  Punktu sistēma v0.xx
   Datubāze / database: C:\...\punktu_sistema\data\punkti.sqlite
   Lokāli / local:      http://localhost:4173
   Tīklā / on the LAN:  http://192.168.1.132:4173
@@ -421,6 +421,7 @@ web/             React 19 + Vite, PWA
   src/live.tsx     Aptauja, cilņu skaitļi un paziņojumi
   src/styles/      Dizaina mainīgie un komponentes
   test/ui.mjs      Pārlūka testi (Playwright, nav obligāta atkarība)
+test.cmd           Testu izvēlne un lokāls serveris (Windows)
 Dockerfile         Divpakāpju build; datubāze /data sējumā
 docker-compose.yml Parastam Docker (ar `build:`)
 deploy/            Dockge steki: GHCR attēls un "nokopē mapi"
@@ -428,6 +429,19 @@ deploy/            Dockge steki: GHCR attēls un "nokopē mapi"
 ```
 
 ### Testi
+
+**Uz Windows:** palaid [`test.cmd`](test.cmd) (dubultklikšķis vai `test.cmd`).
+Tas piedāvā izvēlni — visi testi, tikai typecheck, API vai pārlūka testi — un
+pēc tam atstāj lietotni atvērtu uz `http://localhost:4173`, lai jaunās funkcijas
+var aptaustīt ar roku. **Ctrl+C** aizver.
+
+Izvēli var padot arī kā argumentu: `test.cmd 2`.
+
+Rokas testēšanai tiek lietota atsevišķa datubāze `data\test.sqlite` — ģimenes
+`data\punkti.sqlite` netiek aiztikta. Izdzēs `test.sqlite`, lai sāktu no tukšas
+mājas.
+
+Zemāk tas pats ar rokām (un uz Linux / macOS).
 
 API testi (76 pārbaudes, nav vajadzīgas papildu atkarības):
 
@@ -449,6 +463,40 @@ BASE=http://localhost:4230 node web/test/ui.mjs
 
 Versiju shēma ir `0.01`, `0.02`, … kā aprakstīts [`CHANGELOG.md`](CHANGELOG.md).
 `package.json` to atspoguļo semver formātā (`0.04` → `0.4.0`).
+
+**Versija tiek mainīta vienā vietā — saknes [`package.json`](package.json):**
+
+```jsonc
+{ "version": "0.13.0" }   // 0.13.0 -> lietotne rāda "0.13"
+```
+
+Viss pārējais to nolasa no turienes:
+
+| Kur | Kā |
+| --- | --- |
+| Servera baneris un `/api/health` | [`server/src/version.ts`](server/src/version.ts) nolasa manifestu, startējot |
+| Ekrāns *Par lietotni* | Vite to iešuj būvējot ([`web/vite.config.ts`](web/vite.config.ts)) |
+| Docker attēla tags GHCR | CI nolasa `package.json` ([`ci.yml`](.github/workflows/ci.yml)) |
+
+Atliek vēl pievienot jaunu virsrakstu `CHANGELOG.md` — tas ir žurnāls, nevis
+vēl viena tā paša skaitļa kopija.
+
+**Pēdējo ciparu paceļ pats git:** [`.githooks/pre-commit`](.githooks/pre-commit)
+katrā commit uzliek `0.12.0` → `0.12.1` → `0.12.2`, lai vienmēr var pateikt,
+tieši kuru būvējumu NAS darbina. Jaunam laidienam nomaini vidējo ciparu ar roku
+(`0.13.0`) — āķis redz, ka versija jau ir mainīta, un to neaiztiek.
+
+```bash
+git config core.hooksPath .githooks   # to izdara arī `npm install`
+git commit --no-verify                # vienreiz apiet āķi
+```
+
+Āķis neceļ versiju merge, rebase un cherry-pick gadījumos. Ja divos zaros ir
+commit ar vienu un to pašu ceļamo ciparu, merge var prasīt atrisināt konfliktu
+šajā vienā `package.json` rindā — paņem lielāko no diviem.
+
+`package-lock.json` glabā versiju arī, bet `npm ci` par neatbilstību nesūdzas.
+Ja gribi, lai arī tas ir sinhroni, palaid `npm install --package-lock-only`.
 
 ---
 
