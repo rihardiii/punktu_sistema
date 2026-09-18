@@ -431,11 +431,21 @@ deploy/            Dockge steki: GHCR attēls un "nokopē mapi"
 ### Testi
 
 **Uz Windows:** palaid [`test.cmd`](test.cmd) (dubultklikšķis vai `test.cmd`).
-Tas piedāvā izvēlni — visi testi, tikai typecheck, API vai pārlūka testi — un
-pēc tam atstāj lietotni atvērtu uz `http://localhost:4173`, lai jaunās funkcijas
-var aptaustīt ar roku. **Ctrl+C** aizver.
+Tas piedāvā izvēlni un pēc tam atstāj lietotni atvērtu uz
+`http://localhost:4173`, lai jaunās funkcijas var aptaustīt ar roku.
+**Ctrl+C** aizver.
 
-Izvēli var padot arī kā argumentu: `test.cmd 2`.
+| | | |
+| --- | --- | --- |
+| **0** | Visi testi | ~3 min |
+| **1** | Tikai typecheck | ~30 s |
+| **2** | API testi | ~1 min |
+| **3** | Pārlūka testi | ~2 min |
+| **4** | Tikai uzbūvēt un atvērt | ~15 s |
+
+**4** neko nepārbauda — tas ir ceļš uz "gribu tikai paskatīties ar acīm".
+
+Izvēli var padot arī kā argumentu: `test.cmd 4`.
 
 Rokas testēšanai tiek lietota atsevišķa datubāze `data\test.sqlite` — ģimenes
 `data\punkti.sqlite` netiek aiztikta. Izdzēs `test.sqlite`, lai sāktu no tukšas

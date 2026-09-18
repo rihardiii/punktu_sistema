@@ -41,6 +41,7 @@ if not defined PICK (
   echo     1. Tikai typecheck       / Typecheck only
   echo     2. API testi             / API tests
   echo     3. Pārlūka testi         / Browser tests
+  echo     4. Tikai uzbūvēt         / Just build and open
   echo.
   set /p "PICK=  Izvēle / choice [0]: "
 )
@@ -51,8 +52,9 @@ if "%PICK%"=="0" goto pick_all
 if "%PICK%"=="1" goto pick_typecheck
 if "%PICK%"=="2" goto pick_api
 if "%PICK%"=="3" goto pick_ui
-echo   Nezināma izvēle "%PICK%" — der 0, 1, 2 vai 3.
-echo   Unknown choice "%PICK%" — use 0, 1, 2 or 3.
+if "%PICK%"=="4" goto pick_open
+echo   Nezināma izvēle "%PICK%" — der 0, 1, 2, 3 vai 4.
+echo   Unknown choice "%PICK%" — use 0, 1, 2, 3 or 4.
 exit /b 1
 
 :pick_all
@@ -75,6 +77,15 @@ goto done
 call :build
 call :ui_tests
 goto done
+
+:: Neko nepārbauda — uzbūvē un atver. Tas ir ātrais ceļš uz "gribu paskatīties
+:: ar acīm": pārējās izvēles pirms tam nostrādā testus, un, ja vajag tikai
+:: apskatīties jauno ekrānu, tā ir pāris minūšu gaidīšana bez iemesla.
+:: Kopsavilkums tiek izlaists, jo nav ko apkopot.
+:pick_open
+call :build
+if not "%FAILED%"=="0" goto done
+goto serve
 
 :: --- kopsavilkums / summary ------------------------------------------------
 :done

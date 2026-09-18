@@ -129,3 +129,10 @@ so i can open the web page on localhost and test the new features after which i 
     - bonus: the 0.12.0 -> 0.12 conversion now exists in one place only
       (server/src/version.ts); the vite define and web/src/version.ts are gone.
     - if the server is unreachable the screen shows a dash, not an old number.
+[x] browser test should only build and run in browser instead of running all the checks
+    - new option 4 "Tikai uzbūvēt / Just build and open": builds and serves,
+      no checks at all, ~15s to a usable app instead of ~2 min.
+    - option 3 still runs the Playwright suite, so nothing was lost — 4 is the
+      "I just want to look at it" path.
+    - option 4 skips the pass/fail summary too, since nothing ran. If the
+      build itself fails it still says so and asks before serving.
